@@ -3,20 +3,20 @@
   "main": "nextleveldb-assets-client.js",
   "license": "MIT",
   "dependencies": {
-    "nextleveldb-crypto-model": "^0.0.1",
-    "nextleveldb-model": "^0.0.3",
+    "nextleveldb-crypto-model": "^0.0.2",
+    "nextleveldb-model": "^0.0.5",
     "nextleveldb-client": "^0.0.1",
-    "binary-encoding": "^0.0.27",
-    "jsgui3": "^0.0.7"
+    "binary-encoding": "^0.0.29",
+    "jsgui3": "^0.0.8"
   },
   "engines": {
     "node": ">=8.5.0"
   },
-  "description": "NextlevelDB client for tracking asset prices",
+  "description": "NextlevelDB client for tracking asset prices. Inherits from nextleveldb-client.",
   "author": "James Vickers <james@metabench.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/metabench/bittrex-watcher.git"
+    "url": "https://github.com/metabench/nextleveldb-assets-client.git"
   },
-  "version": "0.0.1"
+  "version": "0.0.3"
 }
