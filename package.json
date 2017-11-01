@@ -3,10 +3,10 @@
   "main": "nextleveldb-assets-client.js",
   "license": "MIT",
   "dependencies": {
-    "nextleveldb-crypto-model": "^0.0.2",
-    "nextleveldb-model": "^0.0.5",
-    "nextleveldb-client": "^0.0.1",
-    "binary-encoding": "^0.0.29",
+    "nextleveldb-crypto-model": "^0.0.5",
+    "nextleveldb-model": "^0.0.6",
+    "nextleveldb-client": "^0.0.5",
+    "binary-encoding": "^0.0.30",
     "jsgui3": "^0.0.8"
   },
   "engines": {
@@ -18,5 +18,5 @@
     "type": "git",
     "url": "https://github.com/metabench/nextleveldb-assets-client.git"
   },
-  "version": "0.0.3"
+  "version": "0.0.8"
 }
