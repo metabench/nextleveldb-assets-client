@@ -43,6 +43,8 @@ if (require.main === module) {
 
     // Could automatically load the core upon start.
 
+    // Would be nice if it returned the number of records added.
+
     client.start((err) => {
         if (err) { throw err; } else {
             client.load_core_plus_tables(['bittrex markets', 'bittrex currencies'], (err) => {
@@ -51,10 +53,10 @@ if (require.main === module) {
                 if (err) { throw err; } else {
                     bw.get_at_all_currencies_info((err, at_all_currencies_info) => {
                         if (err) { throw err; } else {
-                            console.log('at_all_currencies_info', at_all_currencies_info);
+                            console.log('at_all_currencies_info.length', at_all_currencies_info.length);
                             
                             var arr_currencies = at_all_currencies_info.values;
-                            console.log('arr_currencies', arr_currencies);
+                            console.log('arr_currencies.length', arr_currencies.length);
                             
                             console.log('at_all_currencies_info.keys', at_all_currencies_info.keys);
                             client.ensure_bittrex_currencies(arr_currencies, (err, res_ensured) => {
@@ -62,6 +64,11 @@ if (require.main === module) {
                                     throw err;
                                 } else {
                                     console.log('res_ensured', res_ensured);
+
+                                    // Ensure all bittrex markets too...
+
+
+
                                 }
                             });
                 
