@@ -1,24 +1,27 @@
 {
-  "name": "nextleveldb-assets-client",
-  "main": "nextleveldb-assets-client.js",
-  "license": "MIT",
-  "dependencies": {
-    "binary-encoding": "^0.0.33",
-    "date-fns": "^1.29.0",
-    "lang-mini": "^0.0.1",
-    "my-config": "^2.0.0",
-    "nextleveldb-client": "^0.0.8",
-    "nextleveldb-crypto-model": "^0.0.5",
-    "nextleveldb-model": "^0.0.10"
-  },
-  "engines": {
-    "node": ">=8.5.0"
-  },
-  "description": "NextlevelDB client for tracking asset prices. Inherits from nextleveldb-client.",
-  "author": "James Vickers <james@metabench.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/metabench/nextleveldb-assets-client.git"
-  },
-  "version": "0.0.10"
+    "name": "nextleveldb-assets-client",
+    "main": "nextleveldb-assets-client.js",
+    "license": "MIT",
+    "dependencies": {
+        "arr-kv-table": "^0.0.1",
+        "binary-encoding": "^0.0.33",
+        "date-fns": "^1.29.0",
+        "float64-kv-table": "^0.0.2",
+        "lang-mini": "^0.0.2",
+        "my-config": "^2.0.0",
+        "nextleveldb-client": "^0.0.12",
+        "nextleveldb-crypto-model": "^0.0.11",
+        "nextleveldb-model": "^0.0.14",
+        "bluebird": "^3.5.1"
+    },
+    "engines": {
+        "node": ">=9.3.0"
+    },
+    "description": "NextlevelDB client for tracking asset prices. Inherits from nextleveldb-client.",
+    "author": "James Vickers <james@metabench.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/metabench/nextleveldb-assets-client.git"
+    },
+    "version": "0.0.15"
 }

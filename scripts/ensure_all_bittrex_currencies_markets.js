@@ -25,6 +25,7 @@ const Assets_Client = require('../nextleveldb-assets-client');
 const Bittrex_Watcher = require('bittrex-watcher');
 const Array_Table = require('arr-table');
 
+const {promisify} = require('util');
 
 if (require.main === module) {
     // use bittrex watcher to get all bittrex currencies
@@ -53,7 +54,28 @@ if (require.main === module) {
 
     client.start((err) => {
         if (err) { throw err; } else {
-            client.load_core_plus_tables(['bittrex markets', 'bittrex currencies'], (err) => {
+            client.load_core_plus_tables(['bittrex markets', 'bittrex currencies'], (err, model) => {
+
+                if (err) {
+                    throw err;
+                } else {
+                    console.log('model', model);
+
+
+
+                    //let res_structure = await promisify(client.ensure_bittrex_structure_current)();
+
+                    client.ensure_bittrex_structure_current((err, res_ensure) => {
+                        if (err) {
+                            throw err;
+                        } else {
+                            console.log('res_ensure', res_ensure);
+                        }
+                    });
+                }
+
+                /*
+
                 // Seems like it has not set up pk_incrementor of the table.
 
                 if (err) { throw err; } else {
@@ -63,6 +85,9 @@ if (require.main === module) {
                             var arr_currencies = at_all_currencies_info.values;
                             //console.log('arr_currencies.length', arr_currencies.length);
                             //console.log('at_all_currencies_info.keys', at_all_currencies_info.keys);
+
+                            / *
+
                             client.ensure_bittrex_currencies(arr_currencies, (err, res_ensured) => {
                                 if (err) {
                                     throw err;
@@ -72,11 +97,14 @@ if (require.main === module) {
                                     // Ensure all bittrex markets too...
                                 }
                             });
+
+                            * /
                 
                 
                         }
                     });
                 }
+                */
             })
 
             
