@@ -8,17 +8,17 @@ const path = require('path');
 
 var config_path = path.resolve('../../../config/config.json');
 var config = require('my-config').init({
-	path : config_path//,
-	//env : process.env['NODE_ENV']
-	//env : process.env
+    path: config_path //,
+    //env : process.env['NODE_ENV']
+    //env : process.env
 });
-console.log('config_path', config_path);
+//console.log('config_path', config_path);
 
 const Assets_Client = require('../nextleveldb-assets-client');
 
 
 if (require.main === module) {
-        //setTimeout(() => {
+    //setTimeout(() => {
     //var db = new Database();
 
     var server_data1 = config.nextleveldb_connections.data1;
@@ -29,13 +29,13 @@ if (require.main === module) {
     // Don't want to replace the code on the server quite yet.
 
     // May be possible to edit the fields, possibly validate the fields?
-    
+
     var client = new Assets_Client(server_data1);
 
     client.start((err, res_start) => {
-		if (err) {
-			throw err;
-		} else {
+        if (err) {
+            throw err;
+        } else {
             console.log('Assets Client connected to', server_data1);
 
             var test_live_btc_eth = () => {
@@ -56,9 +56,12 @@ if (require.main === module) {
                     var dmr = core_model.get_model_rows_decoded();
                     console.log('decoded model from remote', dmr);
                     // Has even applied some fixes to malformed rows.
-                    
+
                     client.backup_bittrex_data((err, res_backup) => {
-                        if (err) { console.trace(); throw err; } else {
+                        if (err) {
+                            console.trace();
+                            throw err;
+                        } else {
                             console.log('res_backup', res_backup);
                         }
                     });

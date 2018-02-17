@@ -95,7 +95,7 @@ function ensure_exists(path, mask, cb) {
         cb = mask;
         mask = 0777;
     }
-    fs.mkdir(path, mask, function(err) {
+    fs.mkdir(path, mask, function (err) {
         if (err) {
             if (err.code == 'EEXIST') cb(null); // ignore the error if the folder already exists
             else cb(err); // something else went wrong
@@ -182,6 +182,8 @@ class Assets_Client extends Client {
 
         // kp, index id, the currency code.
 
+        //console.log('currency_code', currency_code);
+
         this.get_table_id_by_name('bittrex currencies', (err, table_id) => {
             if (err) {
                 callback(err);
@@ -206,11 +208,17 @@ class Assets_Client extends Client {
                         let decoded = Model.Database.decode_model_rows(res_records, 2);
                         //console.log('decoded', decoded);
 
-                        let found_index_row = decoded[0];
-                        //console.log('found_index_row', found_index_row);
+                        if (decoded.length > 0) {
+                            let found_index_row = decoded[0];
+                            //console.log('found_index_row', found_index_row);
 
-                        let currency_id = found_index_row[0][1];
-                        callback(null, currency_id);
+                            let currency_id = found_index_row[0][1];
+                            callback(null, currency_id);
+                        } else {
+                            callback(null, undefined);
+                        }
+
+
                         //this.
                         //Model.Database.
 
@@ -251,7 +259,7 @@ class Assets_Client extends Client {
 
     ensure_at_bittrex_currencies(at_bittrex_currencies, callback) {
         // iterate through the bittrex currencies.
-        let go = async() => {
+        let go = async () => {
             for (let arr_bittrex_currency of at_bittrex_currencies.values) {
                 let res_ensure = await this.ensure_arr_bittrex_currency(arr_bittrex_currency);
             }
@@ -269,7 +277,7 @@ class Assets_Client extends Client {
     // ensure_at_bittrex_markets
     ensure_at_bittrex_markets(at_bittrex_markets, callback) {
         // iterate through the bittrex currencies.
-        let go = async() => {
+        let go = async () => {
             console.log('at_bittrex_markets.values.length', at_bittrex_markets.values.length);
             for (let arr_bittrex_market of at_bittrex_markets.values) {
                 let res_ensure = await this.ensure_arr_bittrex_market(arr_bittrex_market);
@@ -286,7 +294,7 @@ class Assets_Client extends Client {
     }
 
 
-    /*
+
     put_bittrex_currency(arr_bittrex_currency, callback) {
         console.log('put_bittrex_currency', arr_bittrex_currency);
 
@@ -300,18 +308,25 @@ class Assets_Client extends Client {
 
         // do this using the Model for the moment.
         let tbl_bittrex_currencies = this.model.map_tables['bittrex currencies'];
+        // For some reasons, the pk incrementor has not been set up properly in the model.
+        //  Its value is at 0.
+        //  Value should be appropriately high.
+
+
+        console.log('tbl_bittrex_currencies.pk_incrementor', tbl_bittrex_currencies.pk_incrementor);
 
         // Then use add records to this.
         let new_record = tbl_bittrex_currencies.add_record(arr_bittrex_currency);
         console.log('new_record', new_record);
 
-
+        console.trace();
+        throw 'stop';
 
 
 
 
     }
-    */
+
 
     ensure_arr_bittrex_currency(arr_bittrex_currency, callback) {
         // May need to change the format of the currency arr.
@@ -332,6 +347,7 @@ class Assets_Client extends Client {
         //console.log('arr_bittrex_currency', arr_bittrex_currency);
 
         // get the currency by name
+        let that = this;
 
         let inner = (callback) => {
             let code = arr_bittrex_currency[0];
@@ -344,11 +360,11 @@ class Assets_Client extends Client {
                         // it's not already in the DB.
                         //  add the currency record to the DB.
 
-                        this.put_bittrex_currency(arr_bittrex_currency, (err, res_put) => {
+                        that.put_bittrex_currency(arr_bittrex_currency, (err, res_put) => {
                             if (err) {
                                 callback(err);
                             } else {
-                                //console.log('res_put', res_put);
+                                console.log('res_put', res_put);
                                 callback(null, res_put);
                             }
                         });
@@ -500,8 +516,26 @@ class Assets_Client extends Client {
     ensure_bittrex_structure_current(callback) {
         // This version won't use the Model??? Components may do so, in order to create and validate rows.
 
+
+        // load those bittrex tables into the model
+        //  including their records
+
+        // Function to get the primary key incrementor value from the db, for a table.
+        //  Will look it up from the table name.
+        //  Use this to compare with what is in the model
+        //   Would need to look at the table record, to view the incrementors.
+
+
+
+
+
+
+
+
         this.bittrex_watcher.download_bittrex_structure((err, bittrex_structure) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
                 let [at_currencies, at_markets] = bittrex_structure;
                 //console.log('at_currencies', at_currencies);
 
@@ -509,14 +543,18 @@ class Assets_Client extends Client {
                 //  Though we don't have the keys assigned at the moment.
 
                 this.ensure_at_bittrex_currencies(at_currencies, (err, res_ensure_currencies) => {
-                    if (err) { callback(err); } else {
+                    if (err) {
+                        callback(err);
+                    } else {
                         console.log('res_ensure_currencies', res_ensure_currencies);
 
 
                         // Then ensure the markets.
 
                         this.ensure_at_bittrex_markets(at_markets, (err, res_ensure_markets) => {
-                            if (err) { callback(err); } else {
+                            if (err) {
+                                callback(err);
+                            } else {
                                 //console.log('res_ensure_markets', res_ensure_markets);
 
                                 callback(null, [res_ensure_currencies, res_ensure_markets]);
@@ -554,14 +592,18 @@ class Assets_Client extends Client {
         let that = this;
 
         this.load_core_plus_tables(['bittrex currencies', 'bittrex markets'], (err, model) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
                 // Get the currencies and markets (together) from bittrex-watcher
                 // Check that each of the currencies has a record in the DB.
                 //  Could use the model for this.
                 //  However, directly checking in the DB itself may be better.
 
                 // Seems to be how Bluebird promisify works.
-                let p_bittrex_downloaded_structure = promisify(bw.download_bittrex_structure, { context: bw });
+                let p_bittrex_downloaded_structure = promisify(bw.download_bittrex_structure, {
+                    context: bw
+                });
 
                 // using await and destructuring?
                 // download_bittrex_structure returns [at_currencies, at_markets]
@@ -651,7 +693,9 @@ class Assets_Client extends Client {
 
 
                         that.check_table_records_exist('bittrex currencies', at_currencies.values, (err, res_records_exist) => {
-                            if (err) { callback(err); } else {
+                            if (err) {
+                                callback(err);
+                            } else {
                                 console.log('res_records_exist', JSON.stringify(res_records_exist));
 
                                 // then for the currency records that don't exist, we add them.
@@ -834,7 +878,9 @@ class Assets_Client extends Client {
     get_obj_map_bittrex_currencies_ids_by_name(callback) {
         // get the table records for bittrex currencies.
         this.get_table_records('bittrex currencies', (err, records) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
                 //console.log('records', records);
 
                 // then decode these records
@@ -892,7 +938,9 @@ class Assets_Client extends Client {
         // get the records in the 'bittrex markets' table
 
         this.get_table_records('bittrex markets', (err, records) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
                 //console.log('records', records);
                 // then decode these records
                 // 
@@ -1011,14 +1059,18 @@ class Assets_Client extends Client {
         var that = this;
         //console.log('market_name', market_name);
         this.get_bittrex_market_id_by_name(market_name, (err, market_id) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
 
                 //var key = [market_name];
                 var key = [market_id];
                 //console.log('key', key);
 
                 that.get_table_selection_record_count('bittrex market summary snapshots', key, (err, count) => {
-                    if (err) { callback(err); } else {
+                    if (err) {
+                        callback(err);
+                    } else {
                         //console.log('count', count);
 
                         //throw('stop');
@@ -1045,7 +1097,9 @@ class Assets_Client extends Client {
         var that = this;
         //console.log('market_name', market_name);
         this.get_bittrex_market_id_by_name(market_name, (err, market_id) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
 
                 //var key = [market_name];
                 var key = [market_id];
@@ -1053,7 +1107,9 @@ class Assets_Client extends Client {
 
                 // Did this get deleted too?
                 that.get_table_selection_records('bittrex market summary snapshots', key, (err, records) => {
-                    if (err) { callback(err); } else {
+                    if (err) {
+                        callback(err);
+                    } else {
                         //console.log('count', count);
 
                         //throw('stop');
@@ -1076,9 +1132,13 @@ class Assets_Client extends Client {
         // get the fields
         var that = this;
         this.get_table_kv_field_names('bittrex market summary snapshots', (err, kv_field_names) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
                 that.get_bittrex_market_snapshot_records(market_name, (err, snapshot_records) => {
-                    if (err) { callback(err); } else {
+                    if (err) {
+                        callback(err);
+                    } else {
 
                         // 
                         console.log('kv_field_names', kv_field_names);
@@ -1104,7 +1164,7 @@ class Assets_Client extends Client {
         // table kp, market id
         //  market id is made out of 2 fields though.
 
-        var cb_err = function(err) {
+        var cb_err = function (err) {
             var e = {
                 'error': err
             }
@@ -1113,10 +1173,14 @@ class Assets_Client extends Client {
         }
 
         that.get_table_kp_by_name('bittrex market summary snapshots', (err, table_kp) => {
-            if (err) { cb_err(err); } else {
+            if (err) {
+                cb_err(err);
+            } else {
 
                 that.get_bittrex_market_id_by_name(market_name, (err, market_id) => {
-                    if (err) { cb_err(err); } else {
+                    if (err) {
+                        cb_err(err);
+                    } else {
                         console.log('market_id', market_id);
 
                         // The key itself contains an array.
@@ -1169,7 +1233,9 @@ class Assets_Client extends Client {
         //console.log('buf_query', buf_query);
 
         this.get_first_last_table_keys_in_key_selection('bittrex market summary snapshots', [arr_market_id], (err, res_query) => {
-            if (err) { throw err; } else {
+            if (err) {
+                throw err;
+            } else {
                 //console.log('res_query', res_query);
                 var res = [res_query[0][2], res_query[1][2]];
                 //console.log('res', res);
@@ -1227,7 +1293,9 @@ class Assets_Client extends Client {
 
         this.get_buf_bittrex_market_snapshots_in_time_range(arr_market_id, (err, buf_res) => {
             // Could take a while...
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
                 console.log('buf_res', buf_res);
                 console.log('buf_res.length', buf_res.length);
             }
@@ -1272,7 +1340,9 @@ class Assets_Client extends Client {
         console.log('backup_bittrex_market_snapshots', market_name);
 
         this.get_bittrex_market_snapshots_time_range(arr_market_id, (err, time_range) => {
-            if (err) { throw err; } else {
+            if (err) {
+                throw err;
+            } else {
                 //console.log('time_range', time_range);
 
 
@@ -1298,14 +1368,18 @@ class Assets_Client extends Client {
                 //console.log('arr_market_id, time_range', arr_market_id, time_range);
 
                 that.get_buf_bittrex_market_snapshots_in_time_range(arr_market_id, time_range, (err, buf_data) => {
-                    if (err) { callback(err); } else {
+                    if (err) {
+                        callback(err);
+                    } else {
                         //console.log('buf_data', buf_data);
                         //console.log('market_name', market_name);
 
                         //var save_dir_path = 
 
                         ensure_exists(path, (err, exists) => {
-                            if (err) { callback(err); } else {
+                            if (err) {
+                                callback(err);
+                            } else {
                                 var save_path = path + '/' + tr_msg + '.be';
                                 console.log('save_path', save_path);
 
@@ -1418,7 +1492,9 @@ class Assets_Client extends Client {
             console.log('backup_path', backup_path);
 
             that.get_bittrex_at_currencies_markets((err, data) => {
-                if (err) { callback(err); } else {
+                if (err) {
+                    callback(err);
+                } else {
                     var [at_currencies, at_markets] = data;
 
                     // want to repeat through the map currencies...
@@ -1485,7 +1561,9 @@ class Assets_Client extends Client {
                         });
                         console.log('getting available asset price time ranges')
                         fns.go(8, (err, arr_time_ranges) => {
-                            if (err) { callback(err); } else {
+                            if (err) {
+                                callback(err);
+                            } else {
                                 console.log('arr_time_ranges', arr_time_ranges);
                             }
                         });
@@ -1502,7 +1580,9 @@ class Assets_Client extends Client {
 
         var that = this;
         that.get_akvt_bittrex_market_snapshot_records(market_name, (err, akvt_snapshots) => {
-            if (err) { callback(err); } else {
+            if (err) {
+                callback(err);
+            } else {
                 console.log('akvt_snapshots.length', akvt_snapshots.length);
                 //var live_snapshots = new Typed_Arrays_KV_Table(akvt_snapshots.keys, akvt_snapshots.values);
 
@@ -1549,8 +1629,8 @@ if (require.main === module) {
 
     var config = require('my-config').init({
         path: path.resolve('../../config/config.json') //,
-            //env : process.env['NODE_ENV']
-            //env : process.env
+        //env : process.env['NODE_ENV']
+        //env : process.env
     });
 
 
@@ -1575,19 +1655,21 @@ if (require.main === module) {
 
             var test_get_btc_eth_snapshot_records = () => {
 
-                    // get_akvt_bittrex_market_snapshot_records
-                    client.get_akvt_bittrex_market_snapshot_records('BTC-ETH', (err, recordset) => {
-                        if (err) { throw err; } else {
-                            console.log('BTC-ETH', recordset.keys);
-                            console.log('BTC-ETH', recordset.length);
+                // get_akvt_bittrex_market_snapshot_records
+                client.get_akvt_bittrex_market_snapshot_records('BTC-ETH', (err, recordset) => {
+                    if (err) {
+                        throw err;
+                    } else {
+                        console.log('BTC-ETH', recordset.keys);
+                        console.log('BTC-ETH', recordset.length);
 
-                            var timed_prices = recordset.flatten(['timestamp', 'last']);
-                            console.log('timed_prices', timed_prices);
+                        var timed_prices = recordset.flatten(['timestamp', 'last']);
+                        console.log('timed_prices', timed_prices);
 
-                        }
-                    });
-                }
-                //test_get_btc_eth_snapshot_records();
+                    }
+                });
+            }
+            //test_get_btc_eth_snapshot_records();
 
             // get these records as an arr-table.
             // get both the keys and values.
@@ -1598,123 +1680,131 @@ if (require.main === module) {
             var test_get_snapshot_fields = () => {
 
 
-                    // get the fields just as names
+                // get the fields just as names
 
-                    client.get_table_kv_field_names('bittrex market summary snapshots', (err, kv_fields) => {
-                        if (err) { throw (err); } else {
-                            //console.log('kv_fields', JSON.stringify(kv_fields, null, 2));
-                            //console.log('kv_fields', (kv_fields[0]));
-                            //console.log('kv_fields', (kv_fields[1]));
-
-
-                            client.get_table_field_names('bittrex market summary snapshots', (err, fields) => {
-                                if (err) { throw (err); } else {
-                                    //console.log('kv_fields', JSON.stringify(kv_fields, null, 2));
-                                    console.log('fields', fields);
-
-                                }
-                            });
-                        }
-                    });
-
-                    /*
-                    client.get_table_id('bittrex market summary snapshots', (err, table_id) => {
-                        if (err) { throw(err); } else {
-                            console.log('table_id', table_id);
+                client.get_table_kv_field_names('bittrex market summary snapshots', (err, kv_fields) => {
+                    if (err) {
+                        throw (err);
+                    } else {
+                        //console.log('kv_fields', JSON.stringify(kv_fields, null, 2));
+                        //console.log('kv_fields', (kv_fields[0]));
+                        //console.log('kv_fields', (kv_fields[1]));
 
 
-                        }
-                    });
+                        client.get_table_field_names('bittrex market summary snapshots', (err, fields) => {
+                            if (err) {
+                                throw (err);
+                            } else {
+                                //console.log('kv_fields', JSON.stringify(kv_fields, null, 2));
+                                console.log('fields', fields);
 
-                    */
-                }
-                //test_get_snapshot_fields();
+                            }
+                        });
+                    }
+                });
+
+                /*
+                client.get_table_id('bittrex market summary snapshots', (err, table_id) => {
+                    if (err) { throw(err); } else {
+                        console.log('table_id', table_id);
+
+
+                    }
+                });
+
+                */
+            }
+            //test_get_snapshot_fields();
 
 
             // 
 
             var test_bittrex = () => {
-                    client.get_at_bittrex_currencies((err, at_currencies) => {
-                        if (err) { throw err; } else {
-                            //console.log('at_currencies', at_currencies);
+                client.get_at_bittrex_currencies((err, at_currencies) => {
+                    if (err) {
+                        throw err;
+                    } else {
+                        //console.log('at_currencies', at_currencies);
 
-                            var currency_names = at_currencies.get_arr_field_values('Currency');
-                            console.log('currency_names', currency_names);
-
-
-                            client.get_at_bittrex_markets((err, at_markets) => {
-                                if (err) { throw err; } else {
-                                    //console.log('at_markets', at_markets);
-
-                                    var market_names = at_markets.get_arr_field_values('MarketName');
-                                    console.log('market_names', market_names);
-
-                                    // 
-
-                                    //client.get_table_selection_record_count()
-
-                                    //client.get_bittrex_market_snapshot_record_count('BTC-MONA', (err, ));
-
-                                    // then get the snapshot record counts for all markets.
-                                    // Find out how many records we have for each of the bittrex market summary snapshots
+                        var currency_names = at_currencies.get_arr_field_values('Currency');
+                        console.log('currency_names', currency_names);
 
 
-                                    //  in the future this will use srver-side counting, going over the table.
-                                    //   counts of distinct values within range
-                                    // count_bittex_market_summary_snapshots_per_market
+                        client.get_at_bittrex_markets((err, at_markets) => {
+                            if (err) {
+                                throw err;
+                            } else {
+                                //console.log('at_markets', at_markets);
+
+                                var market_names = at_markets.get_arr_field_values('MarketName');
+                                console.log('market_names', market_names);
+
+                                // 
+
+                                //client.get_table_selection_record_count()
+
+                                //client.get_bittrex_market_snapshot_record_count('BTC-MONA', (err, ));
+
+                                // then get the snapshot record counts for all markets.
+                                // Find out how many records we have for each of the bittrex market summary snapshots
 
 
-                                    process.exit();
+                                //  in the future this will use srver-side counting, going over the table.
+                                //   counts of distinct values within range
+                                // count_bittex_market_summary_snapshots_per_market
 
-                                }
-                            });
-                        }
-                    });
-                }
-                //test_bittrex();
+
+                                process.exit();
+
+                            }
+                        });
+                    }
+                });
+            }
+            //test_bittrex();
 
             // Want to have a component that listens for these updates and creates appropriate records.
             //  Not adding them to the model?
             //   May be tricky with their reference back to the table.
 
             var test_subscribe_all = () => {
-                    console.log('test_subscribe_all');
-                    //client.ll_subscribe_all((evt) => {
-                    var unsubscribe = client.subscribe_all((evt) => {
-                        console.log('evt', evt);
+                console.log('test_subscribe_all');
+                //client.ll_subscribe_all((evt) => {
+                var unsubscribe = client.subscribe_all((evt) => {
+                    console.log('evt', evt);
 
-                        if (evt.type === 'connected') {
-                            console.log('connected');
-                            console.log('client_subscription_id', evt.client_subscription_id);
+                    if (evt.type === 'connected') {
+                        console.log('connected');
+                        console.log('client_subscription_id', evt.client_subscription_id);
 
-                            setTimeout(() => {
-                                console.log('pre unsubscribe');
-                                unsubscribe();
+                        setTimeout(() => {
+                            console.log('pre unsubscribe');
+                            unsubscribe();
 
-                            }, 10000)
-                        }
+                        }, 10000)
+                    }
 
-                        if (evt.type === 'batch_put') {
-                            var records = evt.records;
-                            //console.log('records', JSON.stringify(records));
-                            console.log('records.length', JSON.stringify(records.length));
+                    if (evt.type === 'batch_put') {
+                        var records = evt.records;
+                        //console.log('records', JSON.stringify(records));
+                        console.log('records.length', JSON.stringify(records.length));
 
-                        }
-                    });
+                    }
+                });
 
-                }
-                //test_subscribe_all();
+            }
+            //test_subscribe_all();
 
             var test_live_btc_eth = () => {
-                    var live_hist_btc_eth = client.live_bittrex_snapshots('BTC-ETH');
+                var live_hist_btc_eth = client.live_bittrex_snapshots('BTC-ETH');
 
-                    // Will return an object which itself processes events, as it gets the data back from the server.
-                    //  Server-side subscriptions are a good way to do this.
+                // Will return an object which itself processes events, as it gets the data back from the server.
+                //  Server-side subscriptions are a good way to do this.
 
 
 
-                }
-                //test_live_btc_eth();
+            }
+            //test_live_btc_eth();
 
             // Loading the core does not work (any longer) because the fields get loaded wrong.
             //  Could have bug fix swap, now the bug has been found and fixed.
@@ -1732,7 +1822,10 @@ if (require.main === module) {
 
 
                         client.backup_bittrex_data((err, res_backup) => {
-                            if (err) { console.trace(); throw err; } else {
+                            if (err) {
+                                console.trace();
+                                throw err;
+                            } else {
                                 console.log('res_backup', res_backup);
 
 
