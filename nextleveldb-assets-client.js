@@ -1,37 +1,3 @@
-// Extend the normal client.
-//  That normal client would have a few more functions for getting the table names, or some other things, without loading the model.
-//  Loading the system model from the server would be a lot of use.
-
-// Crypto Model?
-// Normal Model
-
-// Important to now work on the continuity of data - reloading Model after restart, and resuming.
-
-// Could be worth having a variety of collection processes too.
-
-// For the moment - will do more client-side work, so that we can get good backups from the existing db server.
-//  Don't change server-side functionality for the moment.
-//  Need to be able to import data from the existing server, and have a fully running data node that also has continuously maintained data.
-//   This could then be used for the first server to connect to.
-
-// Seems like we are some way towards syncing the servers anyway.
-// Two servers could subscribe to the changes of each other. 
-
-
-// Getting and saving compressed backups
-// Restoring backups to a server.
-//  Uploading records from multiple paths.
-
-
-// For the moment, more advanced server-side functionality makes sense.
-//  We have the backups, got a nice amount of data.
-//   May be better identifying the backups by date, with a time range.
-
-
-// If we do ensure data in the model, we just call a function in the model to do so.
-
-
-
 const lang = require('lang-mini');
 const each = lang.each;
 const Fns = lang.Fns;
@@ -40,35 +6,12 @@ const is_array = lang.is_array;
 
 const Crypto_Model = require('nextleveldb-crypto-model');
 
-// Could do some kind of mixin to make Stocks_Model
-// Then collect data from the NASDAQ frequently.
-
-// For the moment, should update github, npm, and deploy this to a remote server.
-//  Then keep it running on that server
-//  Could try having it running on another server here, even sync them 2.5s apart.
-
-// Should soon expand the number of markets stored
-// Should get other exchanges too
-
-// For the moment, it's worth deploying this to a remote server.
-
-// Assets Model
-
-
 const xas2 = require('xas2');
 
 const Arr_KV_Table = require('arr-kv-table');
 
 const Float64_KV_Table = require('float64-kv-table');
 const Evented_Float64_KV_Table = require('float64-kv-table');
-
-// This typed arrays kv table is going to store quite a lot of data as 64 bit floats to begin with.
-//  Want to handle satoshi conversion and types quite soon.
-
-
-
-//const Typed_Arrays_KV_Table = require('typed-arrays-kv-table');
-
 const Model = require('nextleveldb-model');
 const Client = require('nextleveldb-client');
 const Binary_Encoding = require('binary-encoding');
@@ -88,6 +31,28 @@ const util = require('util');
 const promisify = require('bluebird').promisify;
 
 // Path gets resolved from app start dir I think.
+
+// This may get phased out because currently it's only Bittrex.
+//  Should have some fairly small, concise declarations of db functionality that will be fairly pluggable.
+
+
+// Eventually could get the DB itself to run collection processes, possibly collection services within its own process?
+//  For the moment, want to keep the core DB functionality very certain to work and separate from some expiremental features.
+
+// Getting the DB able to ensure that various tables are there will be very useful. Creating them if they are not there.
+
+// Then will be easy to add further markets, data sources, and features.
+//  Will get the NextLevelDB as a very solid basis for other pieces of functionality.
+
+
+
+
+
+
+
+
+
+
 
 
 function ensure_exists(path, mask, cb) {
@@ -113,62 +78,17 @@ class Assets_Client extends Client {
 
     constructor(spec) {
         super(spec);
-
         // maybe best not to set the model like this.
         //  may be best to load the model from remote.
-
         this.model = new Crypto_Model.Database();
         //console.log('this.model.download_ensure_bittrex_currencies', this.model.download_ensure_bittrex_currencies);
         //throw 'stop';
         this.bittrex_watcher = new Bittrex_Watcher();
-
-        // bittrex markets
-
-
     }
-
-    // Ensuring bittrex structure is proving to be quite combersome.
-    //  Future exchanges should probably be easier, plus should be able to create some abstractions to deal with exchanges or data providers.
-
-
-    // Exchange markets, exchange currencies, exchange trades, exchange order books, exchange order book modifications
-    //  Would be excellent to get this for a variety of exchanges.
-
-    // Don't know exactly how many MB / day it would take. Could be quite intensive on storage.
-    //  Moving data off the cloud servers to historical data pages makes sense.
-    //  Could have a bunch of files with the data encoded, ready to be loaded into a db or other data structure.
-    //   Could be available on an Amazon or equivalent db or file storage system.
-
-
-    // The next stage is to make sure that the currencies can be put in the DB OK
-    //  Checking which are to be added before adding them helps debugging and resiliance.
-
-    // Will then get it to automatically update the bittrex markets.
-
-    // Then want to get it running on a server, or a few.
-
-
-    // Having crypto-data-collector able to run its own db process would be useful too.
-    //  The data collector should be able to accsess and store a variety of data from different sources.
-    //  Possibly that would also mean that by default it has some UI capabilities, later on?
-
-
-    // download ensure bittrex currencies
-    //  This would index the currencies as well.
-
-
-    // download ensure bittrex markets
-
-    // the market id basically is the two currency ids together.
-
-    // Could get the record at some stages to test if it exists.
 
     get_bittrex_market_id_by_currency_ids(arr_currency_pair_ids, callback) {
         // The bittrex markets are indexed according to their currency pairs.
         //  It's actually their primary key.
-
-
-
 
     }
 
@@ -176,14 +96,6 @@ class Assets_Client extends Client {
     // Currency lookup function.
 
     get_bittrex_currency_id_by_code(currency_code, callback) {
-        // refers to the index.
-
-        // could use a lower level index lookup function.
-
-        // kp, index id, the currency code.
-
-        //console.log('currency_code', currency_code);
-
         this.get_table_id_by_name('bittrex currencies', (err, table_id) => {
             if (err) {
                 callback(err);
@@ -217,12 +129,6 @@ class Assets_Client extends Client {
                         } else {
                             callback(null, undefined);
                         }
-
-
-                        //this.
-                        //Model.Database.
-
-                        // Can this work where it decodes the index records?
                     }
                 });
             }
@@ -253,8 +159,6 @@ class Assets_Client extends Client {
 
 
     }
-
-
     // This could be broken into separate functions.
 
     ensure_at_bittrex_currencies(at_bittrex_currencies, callback) {
@@ -293,8 +197,7 @@ class Assets_Client extends Client {
         });
     }
 
-
-
+    // Would get called when there is a new bittrex currency.
     put_bittrex_currency(arr_bittrex_currency, callback) {
         console.log('put_bittrex_currency', arr_bittrex_currency);
 
@@ -323,24 +226,10 @@ class Assets_Client extends Client {
         throw 'stop';
 
 
-
-
     }
 
 
     ensure_arr_bittrex_currency(arr_bittrex_currency, callback) {
-        // May need to change the format of the currency arr.
-
-        // kv [[], []]
-        // flat []
-
-        // if there is no callback, return a promise.
-
-
-        // Could have an inner function that gets called / used differently depending on if there is a promise or not.
-
-
-
         let a = arguments,
             l = a.length;
         //console.log('l', l);
@@ -370,9 +259,6 @@ class Assets_Client extends Client {
                         });
 
                     } else {
-                        // if it's not given a callback then return a promise.
-                        // But maybe return the promise before this executes, and have the promise called at this stage.
-
 
                         callback(null, true);
                     }
@@ -418,37 +304,6 @@ class Assets_Client extends Client {
                 if (err) {
                     callback(err);
                 } else {
-                    //console.log('market_currency_ids', market_currency_ids);
-
-                    // Then check for the market record with those currency ids.
-
-                    // could do a count by key.
-
-                    // could put the buffer key prefix together.
-
-                    // get_table_records_by_key
-                    //  a bit like searching by key prefix, except the system sets the key prefix according to the table, then we give it the key.
-
-                    //this.get_table_records_by_key('bittrex markets', [market_currency_ids], (err, res_records) => {
-
-                    /*
-                    this.get_table_keys('bittrex markets', (err, keys) => {
-                        console.log('keys', keys);
-                        throw 'stop';
-                    })
-                    */
-
-                    // Get single record.
-
-                    // getting the key beginning does not work with that key itself.
-                    //  only with key_beginning...
-
-                    // Need just the key itself looked up when doing key beginning.
-
-                    // get_table_record_by_key
-
-                    // looks up the table kp.
-                    //  
 
                     this.get_table_record('bittrex markets', market_currency_ids, (err, res_record) => {
                         if (err) {
@@ -465,36 +320,8 @@ class Assets_Client extends Client {
                             }
                         }
                     })
-
-                    /*
-                    this.get_table_records_by_key_beginning('bittrex markets', market_currency_ids, (err, res_records) => {
-                        if (err) {
-                            callback(err);
-                        } else {
-                            console.log('res_records', res_records);
-                            console.log('res_records.length', res_records.length);
-
-
-                        }
-                    })
-                    */
-
-
-
-
-                    //this.get_record
-
-                    //this.ll_get_records_by_key_prefix()
-
-
-                    // check if the record exists?
-
                 }
             });
-
-
-
-
 
         };
 
@@ -525,13 +352,6 @@ class Assets_Client extends Client {
         //  Use this to compare with what is in the model
         //   Would need to look at the table record, to view the incrementors.
 
-
-
-
-
-
-
-
         this.bittrex_watcher.download_bittrex_structure((err, bittrex_structure) => {
             if (err) {
                 callback(err);
@@ -548,7 +368,6 @@ class Assets_Client extends Client {
                     } else {
                         console.log('res_ensure_currencies', res_ensure_currencies);
 
-
                         // Then ensure the markets.
 
                         this.ensure_at_bittrex_markets(at_markets, (err, res_ensure_markets) => {
@@ -563,308 +382,9 @@ class Assets_Client extends Client {
 
                             }
                         })
-
-
-
-
-
                     }
                 })
 
-
-
-
-            }
-        })
-
-    }
-
-    _ensure_bittrex_structure_current(callback) {
-
-
-        // .load_core_plus_tables(['bittrex markets', 'bittrex currencies']
-
-        // Assume the core is loaded?
-        //  No harm in reloading it?
-        //let p_bw = promisify(this.bittrex_watcher);
-
-        let bw = this.bittrex_watcher;
-        let that = this;
-
-        this.load_core_plus_tables(['bittrex currencies', 'bittrex markets'], (err, model) => {
-            if (err) {
-                callback(err);
-            } else {
-                // Get the currencies and markets (together) from bittrex-watcher
-                // Check that each of the currencies has a record in the DB.
-                //  Could use the model for this.
-                //  However, directly checking in the DB itself may be better.
-
-                // Seems to be how Bluebird promisify works.
-                let p_bittrex_downloaded_structure = promisify(bw.download_bittrex_structure, {
-                    context: bw
-                });
-
-                // using await and destructuring?
-                // download_bittrex_structure returns [at_currencies, at_markets]
-                //  or it should do.
-
-                console.log('p_bittrex_downloaded_structure', p_bittrex_downloaded_structure);
-
-                p_bittrex_downloaded_structure().then(([at_currencies, at_markets]) => {
-                    console.log('at_currencies', at_currencies);
-                    console.log('at_markets', at_markets);
-
-                    //console.log('at_currencies.length', at_currencies.length);
-                    //console.log('at_markets.length', at_markets.length);
-
-
-                    // Here it may be worth doing checks to see if we have those records.
-
-                    // client.check_records
-                    //  would check those records exist on the server.
-                    //   we may not know what the assigned key is.
-                    //   so it may check the records against the fields that the records are indexed by.
-
-                    // Also want a systematic way to transform records.
-                    //console.log('at_currencies.keys', at_currencies.keys);
-
-                    // So we can use just one field from this array_table, 'Currency', and then search by indexed value within the DB.
-
-                    //var currency_0 = at_currencies.values[0];
-                    //console.log('currency_0', currency_0);
-
-                    // then try to ensure that bittrex currency.
-                    //  or do the index check on it.
-
-                    /*
-                    that.check_table_record_index_lookup('bittrex currencies', currency_0, (err, res_lookup) => {
-                        if (err) { callback(err); } else {
-                            console.log('res_lookup', res_lookup);
-                        }
-                    });
-                    */
-
-                    that.count_table_index_records('bittrex currencies', (err, count) => {
-                        console.log('count', count);
-
-                        // so seems like the records have been indexed :)
-
-                        // Will still need to automate server-side indexing.
-
-                        // A bit of coding to do with input => output transformations and pipelines.
-                        //  Want it so that we can easily define (and save?) functions of mappings between data as it arrives from an API such as bittrex,
-                        //  and the DB's records. It could involve mapping
-
-                        // We could do the lookup on all the currencies, and see which of them are within the system.
-
-                        // Could do a lookup on all the currency data.
-                        //  Would be interesting to send it to the server...
-                        //   But possibly the server would need to know more about adding keys.
-                        //   Or it could be told that the data is arriving without keys.
-
-                        // Don't want particularly complex rules for adding the keys to data
-                        // Or modifying the keys, normalising data by looking up what's there.
-
-                        // that.check_table_records_exist
-                        //  it would do that using the index lookup.
-
-                        // Will need a bit of extra handling for how pks could have 2 fields, and dealing with their references, treating them as a single value.
-
-                        // that.check_table_records_exist would return false for the records that don't exist.
-
-                        // It could be changed to use upgraded server capabilities.
-                        //  The server still is not adding records with automatic indexing.
-
-                        // Would be worth having the server index these records when they get added - will use a different function, not the ll_put, to add these records.
-                        //  Possibly calling it INSERT would be better.
-
-                        // Ensuring records meaning insert, no overwrite, and returning the keys to the records.
-
-                        // The markets need to have concise keys, so that the trade data is small too.
-                        //  Don't want to require a lot of space to refer to which market some data refers to.
-
-
-                        // Before long, will be worth taking daily backups of whatever data gets generated by this system.
-                        //console.log('pre check_table_records_exist');
-
-                        // ensure_arr_bittrex_currencies
-
-
-
-                        that.check_table_records_exist('bittrex currencies', at_currencies.values, (err, res_records_exist) => {
-                            if (err) {
-                                callback(err);
-                            } else {
-                                console.log('res_records_exist', JSON.stringify(res_records_exist));
-
-                                // then for the currency records that don't exist, we add them.
-
-
-                                // An INSERT_RECORD function could be useful for this rather than lower level db put.
-                                //  It would also insert the relevant index records.
-                                //  This would be done using a server-side model.
-
-                                // Very soon, need to have a replicated and backed up bittrex data system.
-                                // Need to verify the data is correct.
-                                // Expand to other exchanges.
-
-                                // Get the streaming bittrex data working too.
-
-                                // Its proving a very longwinded process to get some data updated and normalised.
-                                //  Seems necessary to solve the general programming case of doing it, not just for this specific bittrex data, while still having bittrex specific code.
-
-
-                                // Smaller asset client systems would make sense.
-                                //  They could use some general purpose functionality from here.
-                                //  Also should have a table of the exchanges / data providers.
-                                //  A users table seems very important for the database too.
-                                //   Though its possible that a separate authentication database could be used.
-
-                                let missing_records = [];
-
-                                let missing_record_arr_indexes = [];
-                                res_records_exist.forEach((item, i) => {
-                                    if (item === false) {
-                                        missing_record_arr_indexes.push(i);
-                                        missing_records.push(at_currencies.values[i]);
-                                    }
-                                });
-                                console.log('missing_record_arr_indexes', missing_record_arr_indexes);
-                                console.log('missing_records', missing_records);
-
-                                //throw 'stop';
-
-                                // then insert the missing records
-
-
-
-                                let ensure_bittrex_markets = () => {
-                                    console.log('ensure_bittrex_markets');
-
-                                    // Need the map of currencies by id.
-                                    //  May be worth getting this anew from the database.
-
-                                    //  Possibly doing an index lookup in the DB would be best.
-
-                                    // Get the records, map them with a function.
-                                    //  Get the records, construct a map object by iterating them, and putting them to the map obj.
-
-                                    // get_table_records_obj_map_by_field_value.
-                                    //  
-
-                                    that.get_table_records_fields_value_map('bittrex currencies', 1, ((err, map_currencies_by_code) => {
-                                        if (err) {
-                                            callback(err);
-                                        } else {
-                                            console.log('map_currencies_by_code', map_currencies_by_code);
-
-                                            var nxt = map_currencies_by_code['NXT'];
-                                            var ukg = map_currencies_by_code['UKG'];
-
-
-                                            console.log('nxt', nxt);
-                                            console.log('ukg', ukg);
-
-                                            //throw 'stop';
-
-
-
-
-
-                                            // Check the market records exist
-
-                                            // The market records get transformed somewhat.
-                                            //console.log('at_markets.values', at_markets.values);
-
-                                            // what is the market record def in the DB / model?
-                                            //  Get the table field info from the db.
-
-                                            //let markets
-                                            let arr_record_data = at_markets.values.map(item => {
-                                                console.log('item', item);
-                                                let arr_item_res = item.slice();
-                                                //let key = item[0], value = item[1];
-                                                //console.log('key', key);
-                                                //console.log('key[0]', key[0]);
-                                                arr_item_res[0] = map_currencies_by_code[item[0]][0][0];
-                                                arr_item_res[1] = map_currencies_by_code[item[1]][0][0];
-                                                return arr_item_res;
-                                            });
-
-                                            console.log('arr_record_data', arr_record_data);
-
-                                            // Probably needs to put the records into the same format somehow.
-
-                                            that.check_table_records_exist('bittrex markets', arr_record_data, (err, res_records_exist) => {
-                                                if (err) {
-                                                    callback(err);
-                                                } else {
-                                                    console.log('res_records_exist', res_records_exist);
-
-                                                    // Then find any records that don't exist.
-                                                    //  The records exist function could separate out the records that don't exist from the ones that do.
-
-                                                    // We are looking for their keys, 
-
-
-                                                    throw 'stop';
-                                                }
-                                            });
-
-
-                                            // Then check that these records are in the database.
-                                        }
-                                    }))
-                                }
-
-                                if (missing_records.length > 0) {
-                                    that.insert_table_record('bittrex currencies', missing_records[0], (err, res_insert) => {
-                                        if (err) {
-                                            callback(err);
-                                        } else {
-
-                                            console.log('res_insert', res_insert);
-                                            // Make sure the bittrex markets are within the DB.
-
-                                            // The inserting of records would also assign them a new primary key if one is not given.
-                                            //  Want there to be some intelligence on the DB side, client side to begin with, about how to insert a record
-                                            //  that is given as an array, when:
-                                            //   We may not have the primary key
-                                            //   (The primary key may need some translation / normalisation.)
-
-                                            // With bittrex markets, it is most likely that we would construct / reconstruct the primary keys?
-                                            //  Or have a feature on the client or server, or both, that can normalise / translate fields.
-                                            //   We can give it a translation schema, and it uses that to lookup the values within a primary key.
-
-                                            // Really need to get these servers back online, and able to stream real-time data to clients.
-                                            //  May actually take a while longer working on it.
-
-                                            // Want to have a local client that also collects data from remote clients, backing it up too.
-
-                                            // The silverstone PC may prove useful for such a long-running process. It could save the backups to HD and over the network every day.
-
-                                            // Want to have it very easy to start up a node using code that's available through NPM and github.
-
-
-                                            // Crypto data collector could become a more advanced app that by default runs a server node that makes the data available over the network.
-
-
-
-                                            // Need the info about the bittrex currencies to ensure the markets have been properly added.
-
-                                            ensure_bittrex_markets();
-                                            //throw 'stop';
-                                        }
-                                    })
-                                } else {
-                                    ensure_bittrex_markets();
-                                }
-                            }
-                        });
-
-                    });
-                })
             }
         })
     }
@@ -956,55 +476,6 @@ class Assets_Client extends Client {
         })
     }
 
-
-
-    /**
-     * 
-     * 
-     * @param {string} currency_symbol 
-     * @param {any} callback 
-     * @memberof Assets_Client
-     */
-    get_bittrex_currency_id_by_symbol(currency_symbol, callback) {
-        // could reduce this to some simpler kind of lookup function.
-
-        // refers to a table. needs a table key prefix. needs an index number
-
-        //var 
-
-        // will need to look up on an index.
-        //  should look up on the first index field.
-
-        // thing we will need to do recreate / ensure table indexes.
-        //  some tables will not be indexed properly.
-
-        // Can do more to 1.check indexes
-        //  2. fix indexes where they are lacking.
-
-        // Fixing indexes on the server would make sense.
-        //  Server would have a loaded version of the model.
-
-        // Server would be able to load the model out of a query of a selection of records.
-        //  Model could get loaded from a binary buffer.
-        //  Would probably have a few functions to query the server model to see how many records it has / see which tables it has loaded records
-        //   Ability to verify that the server model has got some specific things loaded that will enable it to normalise and index.
-
-        // could look at the model on the client too.
-        //  not sure there are the indexed records there.
-
-        if (this.model.map_tables['bittrex currencies']) {
-            // Maybe it's got its rows indexed.
-
-            // use this model to pu together the index query?
-
-            // idx: table id, index id, keys to lookup
-
-            // tbl.indexes[0].find(currency_symbol)
-
-        }
-
-    }
-
     // soon, want to get numeric data back as a typed array.
     //  Transmitting these over binary seems like a good option.
 
@@ -1080,15 +551,6 @@ class Assets_Client extends Client {
                 });
             }
         });
-
-        /*
-        this.get_table_index_selection_records('bittrex markets', key, (err, records) => {
-            if (err) { callback(err); } else {
-
-            }
-        });
-        */
-
     }
 
     get_bittrex_market_snapshot_records(market_name, callback) {
@@ -1253,43 +715,16 @@ class Assets_Client extends Client {
 
 
     get_buf_bittrex_market_snapshots_in_time_range(arr_market_id, arr_time_range, callback) {
-        // A buffer for all of these records, not decoded.
-        //  Will be easier to combine and save that way.
-
         var kp = this.model.map_tables['bittrex market summary snapshots'].key_prefix;
-        //console.log('kp', kp);
-
-        //console.log('arr_market_id', arr_market_id);
 
         var l = Crypto_Model.Database.encode_key(kp, [arr_market_id, arr_time_range[0]]);
         var u = Crypto_Model.Database.encode_key(kp, [arr_market_id, arr_time_range[1]]);
-
-        //console.log('l', l);
-        //console.log('u', u);
-
-        //throw 'stop';
-        // Not sure if this is too much to download at once, for some reason.
-        //  Too big for the server's ram, without paging.
 
         this.ll_get_buf_records_in_range(l, u, callback);
 
     }
 
     download_save_bittrex_market_time_range_snapshots_by_day(arr_market_id, path, callback) {
-
-        // Call this multiple times from the backup function.
-        //  Show progress of how much gets downloaded
-        //   will be nice to see how many MB per second or minute.
-
-        // Get the bittrex market snapshots within a time range
-
-
-        // Get the daily market snapshots in a time range.
-        //  May require other server options.
-        //   Could be best to break the data down into smaller portions.
-        //    Daily should probably be OK. Not sure though.
-
-
 
         this.get_buf_bittrex_market_snapshots_in_time_range(arr_market_id, (err, buf_res) => {
             // Could take a while...
@@ -1301,27 +736,7 @@ class Assets_Client extends Client {
             }
         });
 
-        // return downloaded size, then possibly compressed size.
-        //  later, will have Binary_Encoding allow for compressed data to be saved within.
-        //   will reference a compression algorythm and give its settings too. Could start with one or two with sensible default settings.
-
-
-
     }
-
-    // Could do some backups in the more general purpose client.
-    //  Backup range
-    //  Give it a backup path
-
-    // .new_backup_path
-
-
-
-
-
-
-    // Backup path
-    //  
 
     backup_bittrex_market_snapshots(path, arr_market_id, market_name, callback) {
         // Backup path management.
@@ -1343,53 +758,26 @@ class Assets_Client extends Client {
             if (err) {
                 throw err;
             } else {
-                //console.log('time_range', time_range);
-
-
                 var tr = [(new Date(time_range[0])).toISOString(), (new Date(time_range[1])).toISOString()];
-                //console.log('tr', tr);
-
-                //console.log(tr[0] + ' to ' + tr[1]);
-
 
                 var str_format = 'dddd D MMMM YYYY hh.mma'
 
                 var f_start = date_fns.format(tr[0], str_format);
-                //console.log('f_start', f_start);
 
                 var f_end = date_fns.format(tr[1], str_format);
-                //console.log('f_end', f_end);
 
                 var tr_msg = market_name + ' ' + f_start + ' to ' + f_end;
-                //console.log('tr_msg', tr_msg);
-
-                // then save them to disk
-
-                //console.log('arr_market_id, time_range', arr_market_id, time_range);
 
                 that.get_buf_bittrex_market_snapshots_in_time_range(arr_market_id, time_range, (err, buf_data) => {
                     if (err) {
                         callback(err);
                     } else {
-                        //console.log('buf_data', buf_data);
-                        //console.log('market_name', market_name);
-
-                        //var save_dir_path = 
-
                         ensure_exists(path, (err, exists) => {
                             if (err) {
                                 callback(err);
                             } else {
                                 var save_path = path + '/' + tr_msg + '.be';
                                 console.log('save_path', save_path);
-
-                                // Tricky, because this buffer contains XAS2 prefixed data, the records.
-                                //  Would be better to have the server return a different record format.
-                                //  However, that may be a tricky change to make totally reliably right now.
-
-                                //
-
-
 
                                 var comp_buf = Binary_Encoding.compress_buffer_zlib9(buf_data);
                                 console.log('comp_buf.length', comp_buf.length);
@@ -1398,84 +786,21 @@ class Assets_Client extends Client {
                                 fs.writeFile(save_path, comp_buf, callback);
                             }
                         });
-
-                        // Could be better to save 1 file per day.
-                        //  That could also be nice with p2p sharing.
-
-                        // then save it to a specific backup path
-
-
-
                     }
                 });
-
-                // then download all of those records.
-                //  could do download to disk.
-
-                // Could have some kind of a 'lock' system to say when a backup is still running.
-                //  Completed backups have got a note saying when they were completed.
-                //  It could always create a new backup directory.
-                //  00001 - [Date] [Backup name]
-
-
-                // Backup functions should be given a backup directory, or they should create a new one.
-                // Date-fns would greatly help.
-
             }
         });
-
     }
 
     backup_bittrex_data(callback) {
         console.log('begin backup_bittrex_data');
 
-        // This would create its own backup task and path.
-        //  Create backup root path.
-        //  Or maybe do this as part of another backup.
-
-
-
-        // For every market and currency, download all the data about them, separately.
-        //  Then encode the data to disk.
-
-        // Backups directory
-        //  Then date and time of backup
-        //   Then the table name dir
-        //    Then directories for each of the markets
-        //     Then 1 binary file per day.
-
-        // Want easier to use, more logical functions to do this.
-
-        //  iterate_markets
-        //  each_bittrex_market
-        //   could provide the record data as well as some decodings of it.
-
-        // Finding out the first and the last key within ranges.
-
-        // get the bittrex markets and currencies together.
-        //  seems like a useful function, as the two are needed together.
-        //   map of currencies, list of markets
-
         var friendly_tr = arrayify((time_range) => {
             var tr = [(new Date(time_range[0])).toISOString(), (new Date(time_range[1])).toISOString()];
-            //console.log('tr', tr);
-
-            //console.log(tr[0] + ' to ' + tr[1]);
-
-
             var str_format = 'dddd D MMMM YYYY hh:mma'
-
             var f_start = date_fns.format(tr[0], str_format);
-            //console.log('f_start', f_start);
-
             var f_end = date_fns.format(tr[1], str_format);
-            //console.log('f_end', f_end);
-
             var tr_msg = f_start + ' to ' + f_end;
-            //console.log('tr_msg', tr_msg);
-
-            //console.log('at_markets.values[0]', at_markets.values[0]);
-
             var market_name = at_markets.values[0][3];
 
             return ([market_name, [f_start, f_end],
@@ -1593,15 +918,6 @@ class Assets_Client extends Client {
 
                 var live_snapshots = new Evented_Float64_KV_Table(akvt_snapshots.keys, akvt_snapshots.values);
 
-                /*
-
-                that.subscribe_bittrex_market_snapshots(market_name, (snapshot_event) => {
-                    console.log('snapshot_event', snapshot_event);
-
-
-                });
-                */
-
                 that.subscribe_table_puts('bittrex market summary snapshots', (snapshot_event) => {
                     console.log('snapshot_event', snapshot_event);
                 });
@@ -1609,8 +925,6 @@ class Assets_Client extends Client {
                 console.log('live_snapshots.length', live_snapshots.length);
             }
         });
-
-
     }
 }
 
@@ -1632,7 +946,6 @@ if (require.main === module) {
         //env : process.env['NODE_ENV']
         //env : process.env
     });
-
 
 
     var server_data1 = config.nextleveldb_connections.data1;
@@ -1664,12 +977,12 @@ if (require.main === module) {
                         console.log('BTC-ETH', recordset.length);
 
                         var timed_prices = recordset.flatten(['timestamp', 'last']);
-                        console.log('timed_prices', timed_prices);
+                        console.log('timed_prices.length', timed_prices.length);
 
                     }
                 });
             }
-            //test_get_btc_eth_snapshot_records();
+            test_get_btc_eth_snapshot_records();
 
             // get these records as an arr-table.
             // get both the keys and values.
@@ -1800,9 +1113,6 @@ if (require.main === module) {
 
                 // Will return an object which itself processes events, as it gets the data back from the server.
                 //  Server-side subscriptions are a good way to do this.
-
-
-
             }
             //test_live_btc_eth();
 
@@ -1835,7 +1145,6 @@ if (require.main === module) {
                     }
                 });
             }
-
             /*
 
             client.get_bittrex_currency_id_by_code('ETH', (err, res_eth_id) => {
@@ -1848,6 +1157,8 @@ if (require.main === module) {
 
             */
 
+            /*
+
             client.ensure_bittrex_structure_current((err, res_structure) => {
                 if (err) {
                     throw err;
@@ -1855,22 +1166,10 @@ if (require.main === module) {
                     console.log('res_structure', res_structure);
                 }
             })
-
+            */
         }
     });
 } else {
     //console.log('required as a module');
 }
-
 module.exports = Assets_Client;
-
-/*
-
-Connect to the server
-Get a copy of the system model, load it
-Load some further structural tables
-Query the Bittrex market snapshots table
-
-This could have expanded capability to save data to the server.
-
-*/
