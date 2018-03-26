@@ -912,14 +912,12 @@ class Assets_Client extends Client {
         // Want a simple function that returns true or false.
         //  See if the table can be found in the index records.
 
-
-
         this.get_table_kv_field_names('bittrex market summary snapshots', (err, kv_field_names) => {
             if (err) {
                 callback(err);
             } else {
-                console.trace();
-                throw 'stop';
+                //console.trace();
+                //throw 'stop';
 
                 that.get_bittrex_market_snapshot_records(market_name, (err, snapshot_records) => {
                     if (err) {
@@ -1250,6 +1248,56 @@ class Assets_Client extends Client {
             }
         });
     }
+
+    // Connect to an existing DB, and be able to get all Bittrex records easily.
+
+    // Syncing an entire database seems possibly more important / useful though.
+    //  Syncing the tables that go below snapshots in structure (currencies, markets)
+
+
+
+    // For the moment, need to test getting large record sets in multiple pages.
+
+    // Do want it so that a relatively large dataset can be loaded to RAM quickly.
+
+    // For the moment, copying all rows in a table seems appropriate.
+    //  Comparing records in structural tables
+    //  Could be done with table hashes.
+
+
+    // copy_table_from_remote
+
+    // Client could carry out the syncing with get and then put
+    //  Or server could do the syncing where it itself gets the data.
+
+    // Telling a server to sync from another, within the config, would be very useful.
+    //  This way it would gather all of the table records from the source server.
+    //  Would need to do it in the right order.
+
+
+    // Syncing would have to be a somewhat long, multi-part process.
+    //  It should be available within the server module.
+    //  Should be done automatically when configured to do so.
+
+    // Need to get the records to be local, and quickly / continually available.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 if (require.main === module) {
@@ -1272,7 +1320,7 @@ if (require.main === module) {
     });
 
 
-    var server_data1 = config.nextleveldb_connections.data1;
+    var server_data3 = config.nextleveldb_connections.data3;
     //var server_data1 = config.nextleveldb_connections.localhost;
 
     // The table field (for info on the fields themselves) rows are wrong on the remote database which has got approx 12 days of data.
@@ -1282,13 +1330,24 @@ if (require.main === module) {
 
     // May be possible to edit the fields, possibly validate the fields?
 
-    var client = new Assets_Client(local_info);
+    var client = new Assets_Client(server_data3);
+
+    //var client = new Assets_Client(local_info);
 
     client.start((err, res_start) => {
         if (err) {
             throw err;
         } else {
-            console.log('Assets Client connected to', server_data1);
+            console.log('Assets Client connected to', server_data3);
+
+
+            // 22/03/2018 - Nice to see this still works.
+            //  Could retrieve data as more directly encoded TypedArray recordsets.
+            //   Would not retrieve them as records, but using Binary_Encoding, with Binary_Encoding more advanced than it is now.
+
+
+
+
 
             var test_get_btc_eth_snapshot_records = () => {
 
@@ -1307,12 +1366,38 @@ if (require.main === module) {
                         console.log('BTC-ETH', recordset.length);
 
                         var timed_prices = recordset.flatten(['timestamp', 'last']);
+                        console.log('timed_prices', timed_prices);
                         console.log('timed_prices.length', timed_prices.length);
+
 
                     }
                 });
             }
             //test_get_btc_eth_snapshot_records();
+
+            // get all snapshot records
+
+            let test_get_bittrex_snapshot_records = () => {
+                // Paged
+
+                // Get all the table records, paged.
+
+                let obs_table_records = client.get_table_records('bittrex market summary snapshots');
+
+                obs_table_records.on('data', data => {
+                    console.log('data', data);
+                })
+
+
+
+
+
+                //client.get_
+            }
+            test_get_bittrex_snapshot_records();
+
+
+            // 
 
             // get these records as an arr-table.
             // get both the keys and values.
@@ -1378,24 +1463,17 @@ if (require.main === module) {
 
                                 var market_names = at_markets.get_arr_field_values('MarketName');
                                 console.log('market_names', market_names);
-
                                 // 
-
                                 //client.get_table_selection_record_count()
-
                                 //client.get_bittrex_market_snapshot_record_count('BTC-MONA', (err, ));
-
                                 // then get the snapshot record counts for all markets.
                                 // Find out how many records we have for each of the bittrex market summary snapshots
-
 
                                 //  in the future this will use srver-side counting, going over the table.
                                 //   counts of distinct values within range
                                 // count_bittex_market_summary_snapshots_per_market
 
-
                                 process.exit();
-
                             }
                         });
                     }
@@ -1497,7 +1575,7 @@ if (require.main === module) {
 
 
 
-
+            /*
 
             client.get_table_field_info('bittrex market summary snapshots', (err, fields) => {
                 if (err) {
@@ -1506,6 +1584,10 @@ if (require.main === module) {
                     console.log('fields', fields);
                 }
             });
+
+            */
+
+            // Can run tests to see 
 
 
 
