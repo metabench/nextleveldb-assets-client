@@ -114,7 +114,7 @@ class Assets_Client extends Client {
                     // compose the index
                     // Maybe the tables have become messed up.
                     //  Best to start again on dev machine?
-                    //console.log('table_id', table_id);
+                    console.log('table_id', table_id);
                     //throw 'stop';
                     let kp = table_id * 2 + 2;
                     let ikp = kp + 1;
@@ -127,8 +127,13 @@ class Assets_Client extends Client {
                         if (err) {
                             throw err;
                         } else {
+
+                            var arr_kv_buffers = Binary_Encoding.split_length_item_encoded_buffer_to_kv(res_records);
+                            //console.log('arr_kv_buffers', arr_kv_buffers);
+
+
                             //console.log('res_records', res_records);
-                            let decoded = Model.Database.decode_model_rows(res_records, 2);
+                            let decoded = Model.Database.decode_model_rows(arr_kv_buffers, 2);
                             //console.log('* decoded', decoded);
                             //throw 'stop';
                             if (decoded.length > 0) {

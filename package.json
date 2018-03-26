@@ -11,9 +11,9 @@
         "float64-kv-table": "^0.0.2",
         "lang-mini": "^0.0.5",
         "my-config": "^2.0.0",
-        "nextleveldb-client": "^0.0.24",
+        "nextleveldb-client": "^0.0.25",
         "nextleveldb-crypto-model": "^0.0.16",
-        "nextleveldb-model": "^0.0.23",
+        "nextleveldb-model": "^0.0.24",
         "xas2": "^0.0.12"
     },
     "engines": {
@@ -25,5 +25,5 @@
         "type": "git",
         "url": "https://github.com/metabench/nextleveldb-assets-client.git"
     },
-    "version": "0.0.25"
+    "version": "0.0.26"
 }
