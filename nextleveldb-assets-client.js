@@ -114,7 +114,7 @@ class Assets_Client extends Client {
                     // compose the index
                     // Maybe the tables have become messed up.
                     //  Best to start again on dev machine?
-                    console.log('table_id', table_id);
+                    //console.log('table_id', table_id);
                     //throw 'stop';
                     let kp = table_id * 2 + 2;
                     let ikp = kp + 1;
@@ -1325,7 +1325,11 @@ if (require.main === module) {
     });
 
 
+    let access_token = config.nextleveldb_access.root[0];
+
+
     var server_data3 = config.nextleveldb_connections.data3;
+    server_data3.access_token = access_token;
     //var server_data1 = config.nextleveldb_connections.localhost;
 
     // The table field (for info on the fields themselves) rows are wrong on the remote database which has got approx 12 days of data.
@@ -1386,12 +1390,69 @@ if (require.main === module) {
                 // Paged
 
                 // Get all the table records, paged.
+                let decode = true;
 
-                let obs_table_records = client.get_table_records('bittrex market summary snapshots');
+                // If we do use compression, that option could be hidden from here, and a sensible default used, or it be able to be changed elsewhere dynamically.
+                //  Just maybe further options would be enabled in the fn call, but it's not the best way.
 
-                obs_table_records.on('data', data => {
-                    console.log('data', data);
-                })
+                let table_name = 'bittrex market summary snapshots';
+
+                // Observable count table records, with delay paging would be cool.
+                //  Gives the count update every second (or so).
+
+                // A count can (unfortunately) take a few minutes.
+                //  Could have a db option of updating counts upon (successful) completion of operations.
+                //   Would be more complexity at more places.
+
+                // Giving progress for the count through observables would be great.
+                //  Would help to show that server1 works properly when the db gets restarted there.
+
+                // Definitely want compressed data being sent fairly soon, but observable count makes sense.
+
+
+
+
+
+
+                let use_cb_count = () => {
+                    client.count_table_records(table_name, (err, count) => {
+                        if (err) {
+                            throw err;
+                        } else {
+                            console.log('count', count);
+
+                            let obs_table_records = client.get_table_records(table_name, decode);
+
+                            let page_number = 0;
+                            obs_table_records.on('next', data => {
+                                console.log('data.length', data.length);
+                                console.log('page_number', page_number++);
+                            });
+                            obs_table_records.on('complete', last_data_page => {
+                                //console.log('data', data);
+                                console.log('complete');
+                            });
+                        }
+                    })
+                }
+
+                let use_obs_count = () => {
+                    let obs_count = client.count_table_records(table_name);
+                    obs_count.on('next', count => {
+                        console.log('count', count);
+                    })
+                    obs_count.on('complete', count => {
+                        console.log('count complete', count);
+                    })
+
+
+                }
+                use_obs_count();
+
+
+
+
+
 
 
 
