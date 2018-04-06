@@ -49,6 +49,24 @@ const promisify = require('bluebird').promisify;
 
 // 13/03/2018 - Needs further coding and testing to make sure it's adding the Bittrex structure records properly.
 //  Will not be long until this is a very capable DB system that acquired a lot of data, makes history data available in convenient formats, and allows subscriptions to ongoing data events.
+//  Still looks like there is a problem with id incrementor on inc_bittrex currencies_id
+
+// Whenever it adds a new currency record, assigning it an id, and puts that data into the DB. it's got to update the incrementor.
+
+
+
+
+// A function to put a record into the db, where it knows it has an autoincrementing primary key.
+//  It does not get 
+// Seems quite likely that previous currency data did not get added properly, or that it even overwrote another currency.
+
+// With autoincrementing tables, generally the incrementor should be set to the value of the highest pk + 1.
+
+
+
+
+
+
 
 
 
@@ -303,6 +321,9 @@ class Assets_Client extends Client {
 
         // Then use add records to this.
         let new_record = tbl_bittrex_currencies.add_record(arr_bittrex_currency);
+
+        // Has the side effect of maybe changing an incementor value.
+
         console.log('new_record', new_record);
 
         //console.trace();
@@ -312,7 +333,24 @@ class Assets_Client extends Client {
         // The client should be able to put a model record.
         //  That would use a batch put operation that also puts the index values into place.
 
+        // What about incrementors?
+
+        // Option to set the incrementor value?
+        //  The relevant table would need to have its incrementor value updated.
+
+        //  Put the record, and update the table's incrementor value in the db.
+
+        // We may have lost data or data reliability. Possibility of records having got in there with the wrong currency and / or market.
+
+        // Updating the db's incrementor from the model when putting a record makes a lot of sense.
+
+        // update_incrementor_value
+
+        // Update the incrementor value from the model.
+        //  Using a less low level interface would help at times.
+
         this.put_model_record(new_record, callback);
+
 
 
         // then put_model_record.
@@ -1354,6 +1392,31 @@ if (require.main === module) {
             //  Could retrieve data as more directly encoded TypedArray recordsets.
             //   Would not retrieve them as records, but using Binary_Encoding, with Binary_Encoding more advanced than it is now.
 
+            // Possibly coins have been removed, so that could mean the keys on different servers are different.
+            //  Would be somewhat difficult to change the usage of one value to another.
+            //  Would need to download the normalised records, or get values changed on one of the (live) servers.
+
+            // Could increase the amount a DB can deal with unnormalised data.
+            //  When it recognises some differences, it can download unnormalised data, or provide it.
+
+            // Changing record values when changing preceeding data - should not be impossible.
+            //  Will need to investigate these discrepencies further.
+            //  When syncing, would be able to detect differences in the structural tables.
+
+            // Do diffs between a variety of table records.
+            //  Downloading with mapping the results looks like one of the best ways of doing it.
+            //  Probably best experimenting with servers 2, 3 and 4. See if we can get the data back to the local db, and test that data.
+
+            // Then work on data retrieval from server 1.
+            //  Before long, we need to have the full set of data available to use.
+
+
+
+
+
+
+
+
 
 
 
@@ -1448,19 +1511,36 @@ if (require.main === module) {
 
                 }
                 use_obs_count();
-
-
-
-
-
-
-
-
-
-
                 //client.get_
             }
-            test_get_bittrex_snapshot_records();
+            //test_get_bittrex_snapshot_records();
+
+            let test_get_bittrex_currencies_records = () => {
+                let decode = true;
+                let table_name = 'bittrex currencies';
+
+                let obs_table_records = client.get_table_records(table_name, decode);
+
+                let page_number = 0;
+                obs_table_records.on('next', data => {
+                    console.log('data.length', data.length);
+                    console.log('page_number', page_number++);
+                    //console.log('data', data);
+
+
+                    each(data, item => console.log('item', item));
+                });
+                obs_table_records.on('complete', last_data_page => {
+                    //console.log('data', data);
+                    console.log('complete');
+                });
+            }
+            test_get_bittrex_currencies_records();
+
+
+            // get bittrex currencies records
+
+
 
 
             // 
