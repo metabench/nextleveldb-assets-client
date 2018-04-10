@@ -65,7 +65,8 @@ const tables = [
             // They type of the market_id field here is directly the type of the pk of bittrex markets
             //  Get the markets working right, be able to refer to records there by their PKs.
 
-
+            // Condidering a lower level row timestamp too
+            //  making it possible to retrieve all records added after time x.
 
 
             ['market_id fk=> bittrex markets',

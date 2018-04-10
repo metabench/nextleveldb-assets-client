@@ -53,9 +53,6 @@ const promisify = require('bluebird').promisify;
 
 // Whenever it adds a new currency record, assigning it an id, and puts that data into the DB. it's got to update the incrementor.
 
-
-
-
 // A function to put a record into the db, where it knows it has an autoincrementing primary key.
 //  It does not get 
 // Seems quite likely that previous currency data did not get added properly, or that it even overwrote another currency.
@@ -63,21 +60,7 @@ const promisify = require('bluebird').promisify;
 // With autoincrementing tables, generally the incrementor should be set to the value of the highest pk + 1.
 
 
-
-
-
-
-
-
-
-
-
-
 const table_defs = require('./tables');
-
-
-
-
 
 
 function ensure_exists(path, mask, cb) {
@@ -254,8 +237,8 @@ class Assets_Client extends Client {
             console.trace();
             throw err;
         }).then(res => {
-            console.log('res', res);
-            console.log('then ensure_at_bittrex_currencies');
+            //console.log('res', res);
+            //console.log('then ensure_at_bittrex_currencies');
             callback(null, true);
         });
     }
@@ -264,7 +247,7 @@ class Assets_Client extends Client {
     ensure_at_bittrex_markets(at_bittrex_markets, callback) {
         // iterate through the bittrex currencies.
         let go = async () => {
-            console.log('at_bittrex_markets.values.length', at_bittrex_markets.values.length);
+            //console.log('at_bittrex_markets.values.length', at_bittrex_markets.values.length);
             for (let arr_bittrex_market of at_bittrex_markets.values) {
                 let res_ensure = await this.ensure_arr_bittrex_market(arr_bittrex_market);
             }
@@ -304,10 +287,7 @@ class Assets_Client extends Client {
 
         // Using a lower level table_pk_increment function could do the job, where the incrementor values in the DB are updated.
 
-
         // Index records have not been loaded into the model.
-
-
 
 
         // do this using the Model for the moment.
@@ -323,12 +303,10 @@ class Assets_Client extends Client {
         let new_record = tbl_bittrex_currencies.add_record(arr_bittrex_currency);
 
         // Has the side effect of maybe changing an incementor value.
-
-        console.log('new_record', new_record);
+        //console.log('new_record', new_record);
 
         //console.trace();
         //throw 'stop';
-
 
         // The client should be able to put a model record.
         //  That would use a batch put operation that also puts the index values into place.
@@ -504,7 +482,7 @@ class Assets_Client extends Client {
                 if (err) {
                     callback(err);
                 } else {
-                    console.log('currency_id', currency_id);
+                    //console.log('currency_id', currency_id);
                     if (typeof currency_id === 'undefined') {
                         // it's not already in the DB.
                         //  add the currency record to the DB.
@@ -513,13 +491,11 @@ class Assets_Client extends Client {
                             if (err) {
                                 callback(err);
                             } else {
-                                console.log('put_bittrex_currency res_put', res_put);
+                                //console.log('put_bittrex_currency res_put', res_put);
                                 callback(null, res_put);
                             }
                         });
-
                     } else {
-
                         callback(null, true);
                     }
                 }
@@ -565,7 +541,7 @@ class Assets_Client extends Client {
                     callback(err);
                 } else {
 
-                    console.log('market_currency_ids', market_currency_ids);
+                    //console.log('market_currency_ids', market_currency_ids);
 
                     this.get_table_record('bittrex markets', market_currency_ids, (err, res_record) => {
                         if (err) {
@@ -591,7 +567,7 @@ class Assets_Client extends Client {
                                     if (err) {
                                         callback(err);
                                     } else {
-                                        console.log('put_bittrex_market res_put', res_put);
+                                        //console.log('put_bittrex_market res_put', res_put);
                                         callback(null, res_put);
                                     }
                                 });
@@ -620,7 +596,7 @@ class Assets_Client extends Client {
 
     ensure_bittrex_structure_current(callback) {
 
-
+        console.log('ensure_bittrex_structure_current');
         // though maybe this won't use a callback.
 
 
@@ -641,11 +617,6 @@ class Assets_Client extends Client {
         //console.log('callback', callback);
         //throw 'stop';
 
-
-
-
-
-
         if (callback) {
             obs_ensure_tables.on('next', data => {
                 console.log('data', data);
@@ -654,13 +625,10 @@ class Assets_Client extends Client {
             obs_ensure_tables.on('complete', res_complete => {
 
                 //console.log('* res_complete', res_complete);
-                console.log('ensure tables complete');
+                //console.log('ensure tables complete');
 
                 // Should have ensured the tables.
                 //  And when doing so, should create the table index records in the DB too.
-
-
-
 
                 // then ensure we have the right currencies and markets in the tables.
 
@@ -674,7 +642,7 @@ class Assets_Client extends Client {
                         //  The tables will be given declaratively.
                         // Could have an observable return the results for each item in the loop.
                         //  this.ensure_tables(tables)
-                        console.log('have [at_currencies, at_markets]');
+                        //console.log('have [at_currencies, at_markets]');
 
                         //throw 'stop';
                         // Use a map function to turn them into the arr kv data
@@ -684,7 +652,7 @@ class Assets_Client extends Client {
                             if (err) {
                                 callback(err);
                             } else {
-                                console.log('res_ensure_currencies', res_ensure_currencies);
+                                //console.log('res_ensure_currencies', res_ensure_currencies);
                                 // Then ensure the markets.
                                 this.ensure_at_bittrex_markets(at_markets, (err, res_ensure_markets) => {
                                     if (err) {
@@ -1366,8 +1334,20 @@ if (require.main === module) {
     let access_token = config.nextleveldb_access.root[0];
 
 
+    var server_data2 = config.nextleveldb_connections.data2;
+    server_data2.access_token = access_token;
     var server_data3 = config.nextleveldb_connections.data3;
     server_data3.access_token = access_token;
+    var server_data4 = config.nextleveldb_connections.data4;
+    server_data4.access_token = access_token;
+    var server_data5 = config.nextleveldb_connections.data5;
+    server_data5.access_token = access_token;
+
+    var server_data6 = config.nextleveldb_connections.data6;
+    server_data6.access_token = access_token;
+
+
+    local_info.access_token = access_token;
     //var server_data1 = config.nextleveldb_connections.localhost;
 
     // The table field (for info on the fields themselves) rows are wrong on the remote database which has got approx 12 days of data.
@@ -1377,7 +1357,45 @@ if (require.main === module) {
 
     // May be possible to edit the fields, possibly validate the fields?
 
-    var client = new Assets_Client(server_data3);
+    var client = new Assets_Client(server_data2);
+
+    // Some of the clients have now got corrupted data.
+
+    // Seems fine to copy the data of clients 5 and 6.
+
+    //  Want a way to assess the validity of data, can work back from known values.
+    //  Could pinpoint which dataset has which values that correspond with known ones.
+
+    // Definitely need data syncing from the servers to local.
+    //  Getting the data out of the older servers could prove tricky / impossible / too time consuming.
+    //  Better to save / keep that data.
+
+    // Maybe would be easier to set up and use CockroachDB to have a well sharded, reliable and performant data set.
+
+    // Downloading and storing the data here as needed.
+    //  Seems somewhat tricky to turn this system into a fully sharded one. Replication is proving tricky enough.
+    //  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Looks like some currencies were overwritten or stored wrong.
+    //  Tricky since most of the markets reference bitcoin.
+    //  Seems that a combination of problems caused this.
+
+
+
+
 
     //var client = new Assets_Client(local_info);
 
@@ -1535,7 +1553,7 @@ if (require.main === module) {
                     console.log('complete');
                 });
             }
-            test_get_bittrex_currencies_records();
+            //test_get_bittrex_currencies_records();
 
 
             // get bittrex currencies records
@@ -1696,6 +1714,22 @@ if (require.main === module) {
                     }
                 });
             }
+
+
+            // bittrex currencies
+
+            let test_get_table_records = () => {
+                client.get_table_records('bittrex currencies', (err, res) => {
+                    if (err) {
+                        throw err;
+                    } else {
+                        //console.log('bittrex currencies records', res);
+                        console.log('bittrex currencies')
+                        each(res, item => console.log(item[0][0] + ', ' + item[1][0]));
+                    }
+                })
+            }
+            test_get_table_records();
 
             // get the fields for the table.
             //  Probably best to read this out of the model, server side.

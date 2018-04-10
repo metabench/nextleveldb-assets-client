@@ -4,16 +4,16 @@
     "license": "MIT",
     "dependencies": {
         "arr-kv-table": "^0.0.1",
-        "binary-encoding": "^0.0.40",
+        "binary-encoding": "^0.0.41",
         "bittrex-watcher": "^0.0.5",
         "bluebird": "^3.5.1",
         "date-fns": "^1.29.0",
         "float64-kv-table": "^0.0.2",
         "lang-mini": "^0.0.5",
         "my-config": "^2.0.0",
-        "nextleveldb-client": "^0.0.35",
-        "nextleveldb-crypto-model": "^0.0.17",
-        "nextleveldb-model": "^0.0.30",
+        "nextleveldb-client": "^0.0.40",
+        "nextleveldb-crypto-model": "^0.0.20",
+        "nextleveldb-model": "^0.0.33",
         "xas2": "^0.0.12"
     },
     "engines": {
@@ -25,5 +25,5 @@
         "type": "git",
         "url": "https://github.com/metabench/nextleveldb-assets-client.git"
     },
-    "version": "0.0.28"
+    "version": "0.0.33"
 }
