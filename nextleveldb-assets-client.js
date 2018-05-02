@@ -4,8 +4,14 @@ const Fns = lang.Fns;
 const arrayify = lang.arrayify;
 const is_array = lang.is_array;
 const Evented_Class = lang.Evented_Class;
+const get_a_sig = lang.get_a_sig;
+const clone = lang.clone;
 
-const Crypto_Model = require('nextleveldb-crypto-model');
+const Model = require('nextleveldb-model');
+const database_encoding = Model.encoding;
+
+const Record_List = Model.Record_List;
+const get_truth_map_from_arr = lang.get_truth_map_from_arr;
 
 const xas2 = require('xas2');
 
@@ -13,7 +19,6 @@ const Arr_KV_Table = require('arr-kv-table');
 
 const Float64_KV_Table = require('float64-kv-table');
 const Evented_Float64_KV_Table = require('float64-kv-table');
-const Model = require('nextleveldb-model');
 const Client = require('nextleveldb-client');
 const Binary_Encoding = require('binary-encoding');
 const flexi_encode_item = Binary_Encoding.flexi_encode_item;
@@ -60,6 +65,136 @@ const promisify = require('bluebird').promisify;
 // With autoincrementing tables, generally the incrementor should be set to the value of the highest pk + 1.
 
 
+
+
+
+// This could do with repair mode.
+//  It seems as though some bittrex currencies were not added successfully (at all), then their markets were added with broken keys
+
+// Check all bittrex currency records against the actual bittrex currencies
+//  Remplacement records / new records
+// Check the bittrex markets
+//  Do any have broken keys
+//   How many records refer to those broken keys?
+// Put new currency and market records in place, while updating references to broken ones.
+
+//  Maybe the broken keys hav been reused for different things though.
+//   Possibly some of the snapshot records have been corrupted quite a lot more.
+//    Could stop if there is more than one currency which was not added.
+//    Would need cross-referencing to put these records back correctly.
+
+// Check for pk-fk references to malformed keys?
+
+// .repair_bittrex
+//  will get the rows with bad indexes from bittrex markets
+//   will check to see if their currencies are in the system / ensure they are
+//   note down what the bad indexes are.
+//  look for any rows that refer to them
+
+// scan db for all records that have got malformed keys, including referring to a malformed key
+
+// Try getting data8 verified to refer to the correct data.
+
+
+
+// pre_repair_scan
+//  in-depth, looks for market records with bad indexes
+//   looks for the currencies they refer to
+
+// Also, checking of corrupt index records.
+//  Check that each index record refers to an actual record
+
+// Worth scanning for quite a lot of problems before fixing them.
+//  The problems can overlap, need an action plan.
+
+// This has got complicated, but I see no better way than to get this working.
+//  Want the live and historical data object containing the bittrex data.
+
+// Running the data recovery on older servers seems important in some ways.
+//  Data recovery even seems like it could be a 1 week project.
+//  At least recently it seems like it has stopped overwriting markets.
+
+// Getting data8 back in shape seems to be a priority.
+//  Could quite possibly do this within a day, or a few hours at least.
+
+// Validation of all records would be quite a long-running operation.
+//  May be worthwhile in many cases.
+
+
+
+// The malformed bittrex market records could be indexed too.
+//  Finding malformed bittrex market records and currency records seems like the way.
+
+
+// more specific operations
+//  malformed bittrex currencies keys
+//   
+
+// Once we find mal-formed records, we could search for all records that refer to them.
+//  Also, index records that reference a mal-formed key.
+//   Index records don't have a value themselves, we need to read the record and see what it refers to.
+
+// Ideally, find a binch or records relating to one problem, and fix them all together.
+
+
+// table_get_key_range_referring_to
+// get records_referring_to
+
+
+
+
+// Going with checking for broken keys seems the right way.
+//  Looking for all records that refer to that broken key.
+//   The index record would refer to the broken key as well.
+
+// What about a GUI for modifying records / making changes?
+
+
+// For the moment, will fix the current Bittrex problems.
+
+// Also, making a list here of what some lower Bittrex ids should be would make sense.
+
+
+// So if one of these is not correct then we have identified a problem.
+
+
+
+let map_list_correct_bittrex_currency_ids = {
+    '0': 'BTC',
+    '1': 'LTC',
+    '2': 'DOGE',
+    '3': 'VTC',
+    '4': 'PPC',
+    '5': 'FTC',
+    '6': 'RDD',
+    '7': 'NXT',
+    '8': 'DASH',
+    '9': 'POT',
+    '10': 'BLK',
+    '11': 'EMC2',
+    '12': 'XMY',
+    '13': 'AUR',
+    '14': 'EFL',
+    '15': 'GLD',
+    '16': 'FAIR'
+}
+
+
+
+
+// Missing low id bittrex coins - check for them
+
+
+
+
+
+
+
+
+
+
+
+
 const table_defs = require('./tables');
 
 
@@ -84,11 +219,24 @@ function ensure_exists(path, mask, cb) {
  */
 class Assets_Client extends Client {
 
+    // Will be extended to handle the current (20/04/2018) problems with what has already been written to databases.
+    //  Will enable moving onto the next stage - may eventually find problems are not resolvable at present, and back up the database.
+    //  May well require changing and remaking various functions to use newer objects, testing them too.
+
+
+
+    // This is all client-side. Essentially need to hack the DBs into working forms.
+    //  Will try to do some error fixes in generalisable ways.
+    //  
+
+    // problem diagnosis on db
+
+    // full scan
     constructor(spec) {
         super(spec);
         // maybe best not to set the model like this.
         //  may be best to load the model from remote.
-        this.model = new Crypto_Model.Database();
+        this.model = new Model.Database();
         //console.log('this.model.download_ensure_bittrex_currencies', this.model.download_ensure_bittrex_currencies);
         //throw 'stop';
         this.bittrex_watcher = new Bittrex_Watcher();
@@ -169,7 +317,6 @@ class Assets_Client extends Client {
 
         //console.log('currency_code', currency_code);
 
-
     }
 
     // ensure_record
@@ -230,7 +377,9 @@ class Assets_Client extends Client {
 
 
             for (let arr_bittrex_currency of at_bittrex_currencies.values) {
+                console.log('arr_bittrex_currency', arr_bittrex_currency);
                 let res_ensure = await this.ensure_arr_bittrex_currency(arr_bittrex_currency);
+                console.log('res_ensure', res_ensure);
             }
         }
         go().catch(err => {
@@ -260,6 +409,58 @@ class Assets_Client extends Client {
             console.log('then ensure_at_bittrex_markets');
             callback(null, true);
         });
+    }
+
+    get_bittrex_currency_codes(callback) {
+        let obs_bittrex_currencies = this.get_table_records('bittrex currencies');
+        obs_bittrex_currencies.unpaged = true;
+        // Then need to take care while decoding them, some currency records are encoded wrong.
+
+        // leave them out because we only want valid ones here.
+        let codes = [];
+
+        obs_bittrex_currencies.on('next', data => {
+            //console.log('obs_bittrex_currencies data', data);
+            codes.push(data[1][0]);
+        })
+        obs_bittrex_currencies.on('complete', () => {
+            callback(null, codes);
+        })
+
+    }
+
+    get_bittrex_currencies_map_by_id(callback) {
+        let obs_bittrex_currencies = this.get_table_records('bittrex currencies');
+        obs_bittrex_currencies.unpaged = true;
+        // Then need to take care while decoding them, some currency records are encoded wrong.
+
+        // leave them out because we only want valid ones here.
+        //let codes = [];
+        let res = {};
+
+        obs_bittrex_currencies.on('next', data => {
+            //console.log('obs_bittrex_currencies data', data);
+
+            //console.log('data', data);
+
+            let id = data[0][1];
+            res[id] = data;
+
+            // may need to split the data.
+            //  not ideal that it does not unpage.
+
+
+
+            //throw 'stop';
+
+
+            //codes.push(data[1][0]);
+
+        })
+        obs_bittrex_currencies.on('complete', () => {
+            callback(null, res);
+        })
+
     }
 
     // Would get called when there is a new bittrex currency.
@@ -300,7 +501,19 @@ class Assets_Client extends Client {
         //console.log('tbl_bittrex_currencies.pk_incrementor', tbl_bittrex_currencies.pk_incrementor);
 
         // Then use add records to this.
+
+
         let new_record = tbl_bittrex_currencies.add_record(arr_bittrex_currency);
+        console.log('new_record', new_record);
+        console.trace();
+        throw 'stop';
+
+        // But this overwrites the last one.
+        //  Not sure we have loaded the right incrementor values into the model upon start of the assets client.
+        //   Need to check.
+
+
+
 
         // Has the side effect of maybe changing an incementor value.
         //console.log('new_record', new_record);
@@ -327,12 +540,129 @@ class Assets_Client extends Client {
         // Update the incrementor value from the model.
         //  Using a less low level interface would help at times.
 
-        this.put_model_record(new_record, callback);
+
+
+        this.put_model_record(new_record, callback); // This does put the index records too.
 
 
 
         // then put_model_record.
         //  It would use the model to generate the index values, and then put them into the DB.
+
+    }
+
+    // does full table scan right now.
+    //  maybe change fn name because this is done for error correction.
+
+    // Rename this to indicate full table scan
+
+    get_bittrex_currency_by_code(code) {
+        // A promise would be better in general.
+
+        // could callbackify an inner promise.
+
+        // and do checks to see if the last function is a callback
+
+        let fn_sig_pr_cb = (a, fn) => {
+            //let last_a = a[a.length - 1]
+            // ? operator instead would be better
+            let args;
+            // If we have given a callback
+
+            let callback;
+
+            if (typeof a[a.length - 1] === 'function') {
+                args = Array.prototype.slice.apply(a, 0, a.length - 1);
+                callback = a[a.length - 1];
+
+            } else {
+                args = a;
+            }
+            let sig = get_a_sig(args);
+
+            if (callback) {
+                fn(args, sig, (res) => {
+                    callback(null, res);
+                }, (err) => {
+                    callback(null, err);
+                })
+            } else {
+                let res = new Promise((resolve, reject) => {
+                    fn(args, sig, (res) => {
+                        resolve(res);
+                    }, (err) => {
+                        reject(err);
+                    })
+                });
+                return res;
+            }
+
+
+        }
+
+        let res = fn_sig_pr_cb(arguments, (a, sig, done, reject) => {
+            console.log('get_bittrex_currency_by_code inner sig', sig);
+
+            // do the table lookup.
+            // right now, get all the table records.
+
+            let obs_currencies_records = this.get_table_records('bittrex currencies');
+            obs_currencies_records.decoded = true;
+            obs_currencies_records.unpaged = true;
+
+            // Make the observer result have a .stop function.
+
+            // Possibly should create a new bittrex model to compare to the current bittrex tables.
+            //  That would help us identify what should be at earlier record values.
+
+
+            // To veriy that this won't happen in the future, will check on incrementor values.
+            //  Very close now to having a decently working db system....
+
+
+            let found_item;
+            obs_currencies_records.on('next', record => {
+                //console.log('record', record);
+                let record_code = record[1][0];
+
+                if (code === record_code) {
+                    // we have found it.   
+
+                    // 
+                    console.log('found record', record);
+                    found_item = record;
+                    // Seems like it's overwritten Bitcoin's record.
+
+                    // 
+
+                    // Move it towards the end, then ensure the Bitcoin record at position 0.
+                    //  So this coin has been given an index of 0.
+                    //   That would mess up with the consistency
+
+                    // It seems now like a CockroachDB deployed a little while back would be faster to get working.
+
+
+
+                    //obs_currencies_records.stop();
+                    done(record);
+                }
+            });
+            obs_currencies_records.on('complete', () => {
+                // not found
+                //reject();
+
+                if (found_item) {
+                    done(found_item);
+                } else {
+                    reject;
+                }
+            });
+        });
+
+        if (res) {
+            return res;
+        }
+
 
     }
 
@@ -417,51 +747,6 @@ class Assets_Client extends Client {
         });
 
 
-
-        //let akv_bittrex_market = [];
-
-        /*
-
-            
-            field_info {"id":0,"name":"market_currency_id","type_id":null,"fk_to":{"table_name":"bittrex currencies","table_id":5,"fields":[[0,"id",1]]}}
-            field_info {"id":1,"name":"base_currency_id","type_id":null,"fk_to":{"table_name":"bittrex currencies","table_id":5,"fields":[[0,"id",1]]}}
-            field_info {"id":2,"name":"MinTradeSize","type_id":null}
-            field_info {"id":3,"name":"MarketName","type_id":null}
-            field_info {"id":4,"name":"IsActive","type_id":null}
-            field_info {"id":5,"name":"Created","type_id":null}
-            field_info {"id":6,"name":"Notice","type_id":null}
-            field_info {"id":7,"name":"IsSponsored","type_id":null}
-            field_info {"id":8,"name":"LogoUrl","type_id":null}
-
-        */
-
-
-        // Basically, want to work more on constructing the Bittrex market and snapshot records, and get them flowing into the system.
-
-        // Should be able to do the necessary lookups here and have logic to build the records. No need to have the DB work out how to do record transformations.
-        //  Could send it a table with named fields, and have it work out how to persist, but it will be faster now to get it to push the data quickly, having done the right transformations.
-
-        // Having it store data very soon is going to be very useful.
-        //  Need to make it so the data can be retrieved easily, operating with 'workstation mode' syncing.
-
-
-
-
-
-
-
-
-        // The client should be able to put a model record.
-        //  That would use a batch put operation that also puts the index values into place.
-
-        //
-
-
-        // then put_model_record.
-        //  It would use the model to generate the index values, and then put them into the DB.
-
-
-
     }
 
 
@@ -478,14 +763,49 @@ class Assets_Client extends Client {
             //console.log('pre get_bittrex_currency_id_by_code');
             // These should be indexed in the DB.
 
+            // This does an index lookup.
+            //  With repairing, best to fix the indexes (on all indexed records?) to start with.
+
+            // A procedure to go through the database, checking for any index records that do not correctly refer to a record.
+            //  Will need to check that the record's index value corresponds to that index data.
+
+            // Seems like a somewhat complex checking procedure, but it will solve the wrong lookups of coins.
+            //  It looks like a record was overwritten because the incrementor was wrong (or not adding 1), and a new index record was made too.
+
+            // Seems like potentially quite a bit more work to get the data back out of these databases, while correcting the structural records.
+
+            // Will be best to also get the lower resolution historic data for checking as the data gets put into place in the corrected database.
+            //  May be worth running a DB with a limited number of currencies for testing purposes.
+
+            // CockroachDB may still be the best option.
+            //  However would still require a fair bit of code to wrap it, but core db is proven to be reliable.
+
+            // Could have a reindex_table function.
+            //  Or 2-way where it goes through all index records, checking they are correct
+            //   Then it goes through the table records, checking they have correct index records.
+
+
+
+
+
+
+
+
+
+
+
+
+
             this.get_bittrex_currency_id_by_code(code, (err, currency_id) => {
                 if (err) {
                     callback(err);
                 } else {
-                    //console.log('currency_id', currency_id);
+                    console.log('found currency_id', currency_id);
                     if (typeof currency_id === 'undefined') {
                         // it's not already in the DB.
                         //  add the currency record to the DB.
+
+                        // Could check the index value is correct here.
 
                         this.put_bittrex_currency(arr_bittrex_currency, (err, res_put) => {
                             if (err) {
@@ -496,7 +816,7 @@ class Assets_Client extends Client {
                             }
                         });
                     } else {
-                        callback(null, true);
+                        callback(null, currency_id);
                     }
                 }
             });
@@ -594,6 +914,39 @@ class Assets_Client extends Client {
         }
     }
 
+    ensure_bittrex_currencies(callback) {
+        this.bittrex_watcher.download_bittrex_structure((err, bittrex_structure) => {
+            if (err) {
+                callback(err);
+            } else {
+                let [at_currencies, at_markets] = bittrex_structure;
+                //  console.log('at_currencies', at_currencies);
+                // Ensure the tables.
+                //  The tables will be given declaratively.
+                // Could have an observable return the results for each item in the loop.
+                //  this.ensure_tables(tables)
+                //console.log('have [at_currencies, at_markets]');
+
+                //throw 'stop';
+                // Use a map function to turn them into the arr kv data
+                //  Though we don't have the keys assigned at the moment.
+                // Then ensure the 
+                this.ensure_at_bittrex_currencies(at_currencies, (err, res_ensure_currencies) => {
+                    if (err) {
+                        callback(err);
+                    } else {
+                        //console.log('res_ensure_currencies', res_ensure_currencies);
+                        // Then ensure the markets.
+                        callback(null, true);
+                    }
+                })
+
+            }
+        })
+    }
+
+    // 
+
     ensure_bittrex_structure_current(callback) {
 
         console.log('ensure_bittrex_structure_current');
@@ -619,7 +972,7 @@ class Assets_Client extends Client {
 
         if (callback) {
             obs_ensure_tables.on('next', data => {
-                console.log('data', data);
+                //console.log('* data', data);
 
             })
             obs_ensure_tables.on('complete', res_complete => {
@@ -1050,8 +1403,8 @@ class Assets_Client extends Client {
     get_buf_bittrex_market_snapshots_in_time_range(arr_market_id, arr_time_range, callback) {
         var kp = this.model.map_tables['bittrex market summary snapshots'].key_prefix;
 
-        var l = Crypto_Model.Database.encode_key(kp, [arr_market_id, arr_time_range[0]]);
-        var u = Crypto_Model.Database.encode_key(kp, [arr_market_id, arr_time_range[1]]);
+        var l = Model.Database.encoding.encode_key(kp, [arr_market_id, arr_time_range[0]]);
+        var u = Model.Database.encoding.encode_key(kp, [arr_market_id, arr_time_range[1]]);
 
         this.ll_get_buf_records_in_range(l, u, callback);
 
@@ -1260,6 +1613,1420 @@ class Assets_Client extends Client {
         });
     }
 
+    diagnose_bittrex_currency(currency_code) {
+        // 
+
+        // And this is a promise, not a normal observable.
+
+
+
+        // would be worth scanning a table for anything matching this code.
+
+        let pr_res = new Promise((resolve, reject) => {
+            let pr_get = this.get_bittrex_currency_by_code(currency_code);
+
+
+
+            pr_get.then(res => {
+                console.log('pr_get res', res);
+
+                resolve(res);
+
+
+                // 
+
+
+                // if it's 0...
+                //  or compare it to a map of what it should actually be.
+                //  
+
+                //let wrong_coin_id = res[0][1]; // after kp
+
+
+
+
+                /*
+
+                let indexes = this.model.get_idx_records_by_record(res);
+                //console.log('indexes', indexes);
+
+                // Then check for these index records.
+                //  get the records by those given keys.
+
+                // Get an index record by key...
+
+                let fns = Fns();
+
+                // [ [ 13, 0, 'PRO', 0 ], [ 13, 1, 'Propy', 0 ] ]
+
+                // OK, so are these records indexed after all?
+                //  Why is the index lookup not working?
+
+                // A server-side delete record by key that also deletes the index records would be helpful.
+                //  Deletes the index records if there are any.
+
+
+                // It definitely would be nice to get DB sharding working before long, but undoubtedly that will take quite some time and effort to get working properly.
+                //  Not sure how incremental it is worth being in approach to this task. Seems like getting trading working without sharding is more important.
+
+                // May wind up with sharding by key ranges, or times. Sharding by key sub-ranges dependant on timestamp perhaps.
+
+                // Could have another level of operations
+                //  Get keys in range, and get the results from other machines in the shard.
+
+                //indexes.push([13, 0, 'ETH']);
+
+                // Server-side delete records and delete all their indexed records would be cool.
+
+                //  Find records referring to...
+                //   That seems like a useful operation because when changing one record, may want to find all records that refer to it to get them to refer to the new record.
+
+                // Definitely want to get this to respond properly to a new coin being launched on Bittrex.
+                //  Also to analyse coin launches, what happens in the very short time after launched. Basically need to wait for a floor (or unload) and buy after a small amount of time. Then sell soon after.
+                //   
+
+                // Write protecting records would also be useful.
+                //  Need to prevent overwrite of some records, such as bittrex currencies and markets. Better to raise an error in some cases.
+
+                // When changing a record id - need to delete the record, and replace it.
+
+                //  Also need to delete the old index records, and replace them.
+                //   Can do that all client-side.
+
+                each(indexes, idx => {
+                    //idx.pop();
+                    let idx_without_id = idx.slice(0, -1);
+
+                    // then we want to get the keys beginning with that, encoded.
+                    console.log('idx_without_id', idx_without_id);
+
+                    // then get keys in range.
+                    //  searching for indexes will just be about key range / key operations, successfully encoded
+
+                    // doing this while encoding the whole key at once?
+
+                    
+
+                    let encoded_index_part = database_encoding.encode_index_key(idx);
+
+
+                    console.log('encoded_index_part', encoded_index_part);
+
+                    // then lets get the keys beginning with it
+                    //console.log('!!this.get_keys_beginning', !!this.get_keys_beginning);
+
+
+                    fns.push([this, this.ll_get_keys_beginning, [encoded_index_part], (err, res) => {
+                        if (err) {
+                            console.log('err');
+                        } else {
+                            console.log('res', res);
+                        }
+                    }]);
+
+
+
+
+                });
+
+                fns.go((err, res_all) => {
+                    if (err) {
+                        throw err;
+                    } else {
+                        console.log('res_all', res_all);
+
+                        // seems not to have found any index keys for the item.
+
+
+                    }
+                })
+
+                */
+
+
+
+
+
+                // Then can check for these index values being as we have here...
+                //  
+
+
+                // What about its index records if it's in the wrong place?
+                //  Want a function to calculate the index record from the record itself.
+                //   Would load it up into a model table, and then get the result.
+                //   
+
+                // get_idx_records_by_record
+
+                // could use the model much more for doing this?
+
+                // It does seem like keeping a CockroachDB going would make sense.
+
+
+
+
+
+
+
+                // if it's 0, then it's in Bitcoin's place.
+
+                //  we need to change it's ID to go to be a new incrementor record.
+                //   currency at position 0 would no longer exist.
+
+
+
+
+
+
+
+
+            }, err => {
+
+            });
+        });
+
+        return pr_res;
+
+
+    }
+
+
+    // Does seem important to use validate/fix methods to get the data8 and maybe some other data working properly.
+    //  There is quite a nice amount of data that should be available.
+    //   It seems like an overall quite complex system. 
+
+    // Should be possible to calculate moving averages and their crossovers.
+    //  Will begin with a smaller amount of datasets, to help to verify that the data is valid.
+
+
+
+    // function converters
+    //  have cb fn -> pr, cb
+    //       ob fn -> ob, cb
+    //       pr fn -> pr, cb
+
+    // Putting a .then method on observables could do the trick.
+    //  Puts together an array of results, and returns it.
+
+
+    // Will do a full diagnosis in terms of searching for problems in the database.
+
+
+
+    diagnose(callback) {
+
+        // Probably best to fix all the problems at once, in the right sequence.
+        //  Find out what diagnosis there is, ie get a list describing all faults, then apply it to fix_problems
+
+        // May as well use a callback generally here because 
+
+
+
+
+        let obs_problems = new Evented_Class();
+
+
+        let dodgy_item_codes = [];
+        let map_dodgy_item_codes = {};
+
+
+
+        // missing codes
+        //  found on bittrex, missing from db
+
+        // corrupt codes.
+
+        // 
+
+
+        this.bittrex_watcher.get_currency_codes((err, arr_bittrex_codes) => {
+            if (err) {
+                throw err;
+            } else {
+
+                console.log('arr_bittrex_codes', arr_bittrex_codes);
+
+                //throw 'stop';
+
+
+                // Want to see which of the currencies are missing (from here would be inactive currencies)
+                //  Want to see which currencies here are missing in the db records.
+
+                // the bittrex currencies map by id as well...
+
+
+
+                this.get_bittrex_currency_codes((err, db_bittrex_currency_codes) => {
+                    if (err) {
+                        throw err;
+                    } else {
+                        let tm_bittrex_currency_codes = get_truth_map_from_arr(db_bittrex_currency_codes);
+                        let currency_codes_missing_from_db = [];
+
+                        let tm_current_bittrex_currency_codes = get_truth_map_from_arr(arr_bittrex_codes);
+
+                        //console.log('db_bittrex_currency_codes', JSON.stringify(db_bittrex_currency_codes));
+
+                        each(arr_bittrex_codes, code => {
+                            let exists = tm_bittrex_currency_codes[code] || false;
+                            //console.log('code', code);
+                            //console.log('code exists', exists);
+
+                            if (!exists) {
+                                currency_codes_missing_from_db.push(code);
+                            }
+                        });
+
+                        let delisted_codes = [];
+
+
+                        each(db_bittrex_currency_codes, code => {
+                            let exists = tm_current_bittrex_currency_codes[code] || false;
+                            //console.log('code', code);
+                            //console.log('code exists', exists);
+
+                            if (!exists) {
+                                delisted_codes.push(code);
+                            }
+                        });
+
+                        //console.log('currency_codes_missing_from_db', currency_codes_missing_from_db);
+                        //console.log('delisted_codes', delisted_codes);
+
+                        if (currency_codes_missing_from_db.length > 0) {
+                            obs_problems.raise('next', ['currency codes missing from db', currency_codes_missing_from_db]);
+                        }
+
+
+                        // Also need to check for duplicate currency IDs.
+                        //  This may have hapenned if one currency id has overwritten another.
+                        //   This could make the numerical data that has gone into the system corrupt.
+
+                        // It seems like a lot of data will be recoverable, but some not as it has been corrupted.
+                        //  Probably hapenned because the incrementor was not set up to start properly or correct itself.
+                        //   I think the causative buf is fixed now, but there has been some corruption in data written.
+
+                        // Still, would be possible to fix the bugs by changing the data to what it should be where possible.
+                        //  Then can later scan for and possibly fix misaligned records.
+
+                        // Maybe keeping track of the misalignments will help.
+                        //  That way the number of prospective value serieses can be limited further.
+
+
+                        // need to put together a map of the currencies by id to test if any are already there.
+                        //  shared id, currencies sharing the id.
+                        //   then work out which currency needs to have its id changed.
+
+                        // Would be fine to change the id to what it should be, then 
+
+
+                        // Just look through the connected bittrex currencies, see if any two share the same ID.
+                        //  I don't see how that is possible though???
+                        //  They only have one id field.
+                        //   Possibly it's doing a corrupted index lookup.
+                        //    Validation of index on safer start makes sense.
+                        //     Could check the structural tables.
+                        //      That is any table in the core or with any other table fks pointing towards it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        // Then check for currency codes which have got unexpected / wrong IDs.
+
+                        //each(db_bittrex_currency_codes, code => {
+
+                        //})
+
+                        this.get_bittrex_currencies_map_by_id((err, db_currencies_by_id) => {
+                            if (err) {
+                                throw err;
+                            } else {
+                                //console.log('db_currencies_by_id', db_currencies_by_id);
+
+                                // Then iterate these while checking if any of them conflict with values that should be there.
+
+                                // currencies in wrong place in db
+                                // currencies that are not in the db in a set position (and possibly not in the db at all)
+                                // currencies that are not in the db but should be.
+
+                                // has overwritten fixed currency
+
+                                let mismatches = [];
+
+
+                                each(db_currencies_by_id, db_currency => {
+
+                                    let currency_id = db_currency[0][1];
+
+                                    if (map_list_correct_bittrex_currency_ids[currency_id]) {
+
+                                        let correct_item = map_list_correct_bittrex_currency_ids[currency_id];
+                                        //console.log('');
+                                        //console.log('correct_item', correct_item);
+                                        //console.log('db_currency', db_currency);
+                                        //let db_currency_id = db_currency[0][1];
+
+                                        let matches = db_currency[1][0] === correct_item;
+
+                                        if (!matches) {
+                                            // Say which is missing, at what id, and what has replaced it.
+                                            //console.log('db_currencies_by_id', db_currencies_by_id);
+                                            //throw 'stop';
+
+                                            //console.log('db_currencies_by_id[currency_id]', db_currencies_by_id[currency_id]);
+                                            //throw 'stop';
+
+                                            //console.log('record', db_currencies_by_id[currency_id]);
+
+                                            //throw 'stop';
+                                            let obj_mismatch = {
+                                                'should_be': correct_item,
+                                                'at_id': currency_id,
+                                                'code_present': db_currency[1][0],
+                                                'record': db_currencies_by_id[currency_id]
+                                            }
+                                            mismatches.push(obj_mismatch);
+
+                                        }
+
+                                        //console.log('currency_id', currency_id);
+                                        //console.log('map_list_correct_bittrex_currency_ids[currency_id]', map_list_correct_bittrex_currency_ids[currency_id]);
+
+                                        // see what 
+
+                                        //if (map_list_correct_bittrex_currency_ids[currency_id][1][0] !== currency_id) {
+
+                                        //}
+                                    }
+
+
+
+                                });
+
+                                //console.log('mismatches', mismatches);
+                                obs_problems.raise('next', ['currencies overwritten', mismatches]);
+
+
+
+
+
+                                // Look for malformed currency indexes
+                                //  
+
+
+                                let malformed_table_records = [];
+
+
+
+
+                                //
+
+                                let obs_scan = this.error_scan_table('bittrex markets');
+                                obs_scan.on('next', data => {
+
+
+                                    //console.log('bittrex markets scan mal-formed record data', data);
+
+                                    let decoded_data_value = Binary_Encoding.decode_buffer(data[1]);
+                                    //console.log('decoded_data_value', decoded_data_value);
+
+
+
+
+
+                                    let market_code = decoded_data_value[1];
+                                    let [base_code, item_code] = market_code.split('-');
+
+                                    //console.log('[base_code, item_code] ', [base_code, item_code]);
+
+                                    if (!map_dodgy_item_codes[item_code]) {
+                                        map_dodgy_item_codes[item_code] = true;
+                                        dodgy_item_codes.push(item_code);
+                                    }
+
+                                    // as well as the dodgy item codes, need to know the malformed records themselves
+
+                                    // market data records with broken indexes (won't decode)
+
+                                    malformed_table_records.push({
+                                        'arr_bufs': data,
+                                        'value': decoded_data_value,
+                                        'table': 'bittrex markets'
+                                    });
+
+
+
+                                    // Then check for each of these currencies being in the currencies table.
+                                    //  Since we don't know their IDs, could scan all currency records for them.
+
+                                    //  Worth doing a full table scan for the record, as well as for any index record?
+                                    //   Better to use the Model to construct what that record will be.
+                                    //  It may be something like validate_record.
+
+
+                                });
+
+                                obs_scan.on('complete', () => {
+                                    obs_problems.raise('next', ['malformd table records', malformed_table_records]);
+                                    obs_problems.raise('complete');
+                                })
+
+                            }
+                        })
+
+
+
+
+
+
+                        // Could be worth first identifying what is missing from the DB, and working out what place it should be in
+                        //  Then see what is in its place, and move that to where it should be (having allocated free space)
+
+                        // Probably won't be all that many currencies that have mismatches.
+                        //  Want to methodically work through them on all servers and download all data I can get, verify it as it comes in.
+                        //   May well be worth syncing this way to a new server that has been set up there.
+
+
+
+
+
+
+                        // Moving towards shading will be nice with an 'offloading' system where a node is told which key ranges it should not have.
+                        // May be worth giving it a map of all key ranges that other nodes accept
+                        //  Even keeping that fully synced between servers.
+
+
+                        // With syncing, need mismatch detection and fixing in the right way.
+                        //  Just need to leave the server system there gathering data for a while.
+
+                        // Sharding by subdivision or subdivision and time could more.
+                        //  More recent data maintained in more places.
+
+                        // Want a few live moving average systems running ASAP.
+                        //  Look at a few strong indicators for trading signals, then make the trades accordingly.
+
+                        // Will also judge very short-term movements, and have readouts of that.
+
+
+
+
+
+
+
+
+                        // Moving the errant record seems like a good first step.
+                        //  Or do full diagnose and then movement of records.
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        // Seems OK here.
+
+                        // Making a version that does not change db 1, but a safer db tool that opens the db and scans through all records (core first)
+                        //  looking for mal-formed rows.
+                        //   maybe could cross-reference all data, using appropriate lookups, to see if it works as expected.
+
+                        // Getting it so we can get the full run-down on erroneous data in 
+
+
+
+                        // And should be able to identify what the index should be.
+                        //  Could use hard-coded values based on existing and working data.
+                        //   Difficulty with accounting for removed coins, may be necessary to find them, if poss, and incorporate them.
+                        //    Could look at the existing data for coins that have since been removed from bittrex.
+
+
+
+
+
+
+                    }
+                })
+
+
+
+
+                // 
+
+                // we get the error with the currency there by scanning the markets table.
+                //  finding all currencies referred to in bittrex markets.
+
+
+
+                // assets client get bittrex currency codes.
+                //  will go through the bittrex currency records, extracting their codes.
+
+
+
+
+
+
+
+
+                /*
+
+                let obs_scan = this.error_scan_table('bittrex markets');
+                obs_scan.on('next', data => {
+                    console.log('scan data', data);
+
+                    let decoded_data_value = Binary_Encoding.decode_buffer(data[1]);
+                    console.log('decoded_data_value', decoded_data_value);
+
+                    let market_code = decoded_data_value[1];
+                    let [base_code, item_code] = market_code.split('-');
+
+                    console.log('[base_code, item_code] ', [base_code, item_code]);
+
+                    if (!map_dodgy_item_codes[item_code]) {
+                        map_dodgy_item_codes[item_code] = true;
+                        dodgy_item_codes.push(item_code);
+                    }
+
+
+                    // Then check for each of these currencies being in the currencies table.
+                    //  Since we don't know their IDs, could scan all currency records for them.
+
+
+
+                    //  Worth doing a full table scan for the record, as well as for any index record?
+                    //   Better to use the Model to construct what that record will be.
+                    //  It may be something like validate_record.
+
+
+
+
+                });
+                //obs_scan.on('complete', obs_problems.raise('complete'))
+
+
+                obs_scan.on('complete', () => {
+                    console.log('dodgy_item_codes', dodgy_item_codes);
+
+
+                    // Should call this in sequence and get the results together.
+                    //  resolve a group of promises together seems like the best approach.
+
+                    / *
+        
+                    //let obs_currency_problems = this.diagnose_bittrex_currency(dodgy_item_codes[0]);
+        
+                    obs_currency_problems.on('next', data => {
+                        obs_problems.raise('next', {
+                            'table': 'bittrex currencies',
+                            'arr_record': data
+                        })
+                    })
+        
+                    obs_currency_problems.on('complete', data => {
+                        obs_problems.raise('complete');
+                    })
+         
+                    * /
+
+
+                    // Need to apply this to each of the currencies with problems.
+                    //  It seems some earlier currency records were overwritten on various servers.
+
+                    // Making a fixed version of the software and then deploying it to data1 and onwards will work best.
+
+                    // Want to begin some sharding behaviour where a server configured to do so offloads some of its key range, or specific key ranges onto another server.
+                    //  Offloading could be a way of doing it where it sends the data to servers that allow it, logs where it has sent it in a local table, then deletes the local data.
+                    //   If ever asked for any of that local data, will retrieve it from the DBs that it considers responsible for it.
+                    //    Would need to stay updated with what other DBs advertise as the data ranges they hold.
+
+                    // Not so sure about a huge variety of different data ranges.
+                    //  Would be able to define data ranges according to rules.
+
+                    // Anyway, need a client-side function to scan the currencies and find missing currencies.
+                    //  Maybe do that after correcting records with invalid keys.
+
+                    // Should work out what to correct other records to.
+
+
+                    // Interesting idea: a server that has operations to fix data on another server / the other servers.
+                    //  Knows some tables need to be syncronised to match its own in some cases.
+
+                    // Right now, best to progress with some data retrieval and fixing, def get data 8 working.
+                    //  Data 9 and 10 could be worth starting up.
+                    //   Data11 to get data out of other existing servers, and to compare tables for disgnostic purposes.
+
+                    // May need to change some market records, and therefore change lots of snapshot records that refer to them and have been put in the db wrong.
+
+
+                    // A diagnosis asset clien to assess the damage.
+                    //  A scan when the db starts to scan all records to see if they are mal-formed.
+                    //   Just alert if they are.
+
+                    // A server-side record to get all mal-formed keys or records in range.
+                    //  This could possibly be useful for upgrading record structures too.
+
+                    // Would help to identify which of the records are not mal-formed.
+                    //  Many records presumably will be OK.
+
+                    // db malformed record count, percentage.
+
+
+
+
+                    this.diagnose_bittrex_currency(dodgy_item_codes[0]).then(res => {
+                        console.log('diagnose_bittrex_currency res', res);
+
+                        // these are the dodcgy records found.
+
+                        // Should find out what it's index should be.
+
+                        // Seems strange that adding the new currency did not use the incrementor to assign its id correctly.
+
+                        // An insert that first checks for the same primary key would help.
+                        //  insert table record.
+
+                        // Check if the db has_key
+
+                        // should have loaded the model.
+                        //  don't know why we are still stuck at incrementor problems.
+
+                        obs_problems.raise('next', {
+                            'table': 'bittrex currencies',
+                            'arr_row': res,
+                            'problem': 'id 0 when not BTC'
+                        });
+                        obs_problems.raise('complete');
+
+
+
+
+                    }, err => {
+                        console.log('err', err);
+                    })
+
+                    // diagnose the problems with those currencies.
+
+                    //  see if it is recorded at all.
+
+                    // I think that making some things more OO will help.
+                    //  Have a Currency class.
+                    //   Or data strcuture really, it holds basic data about that currency.
+                    //   The Currency class could then be a place from which to load currency data.
+                    //    Though it would best if there was little data retrieval code actually in currency, but it uses a data loading mechanism from elsewhere.
+                    //     Some kind of data provision API that is brought together at the level of the currency.
+
+                })
+
+            */
+
+
+
+            }
+        })
+
+        if (callback) {
+            let arr_all = [];
+            obs_problems.on('next', data => {
+                //console.log('data', data);
+                arr_all.push(data);
+            });
+            obs_problems.on('error', err => {
+
+                callback(err);
+
+            });
+            obs_problems.on('complete', () => {
+                //throw 'stop';
+                callback(null, arr_all)
+            });
+        } else {
+            return obs_problems;
+        }
+    }
+
+
+    // Will get the diagnosis, then apply the fixes
+    diagnose_fix() {
+
+
+        // Logging fix operations could be useful for data recovery,
+        //  If some records have been mixed up, knowing what swaps were made would be useful.
+        //  Would require a sub-db.
+
+        // With only a few mismatches, it won't be so hard to fix.
+        //  Need to get the DB into the correct structure.
+        //  If some data has been corrupted, we would notice it on import with consistency checks
+        //   Consistency with itself... is it one time series? 2 distinct ones? How many distinct time series values.
+
+
+
+
+
+
+
+
+        /*
+
+        let obs_diagnosis = this.diagnose();
+        let problems = [];
+
+        let res = new Evented_Class();
+
+        obs_diagnosis.on('next', problem => {
+            problems.push(problem);
+        });
+
+        obs_diagnosis.on('complete', () => {
+            console.log('problems', problems);
+
+            throw 'stop';
+
+            each(problems, problem => {
+                if (problem.problem === 'id 0 when not BTC' && problem.table === 'bittrex currencies') {
+                    // change the record to use a new id.
+
+                    let record = problem.arr_row;
+
+                    // remake it with the right ID.
+
+                    let new_id = this.model.map_tables[problem.table].pk_incrementor.increment();
+
+                    console.log('new_id', new_id);
+
+                    let new_record = clone(record);
+                    new_record[0][new_record[0].length - 1] = new_id;
+
+                    console.log('record', record);
+                    console.log('new_record', new_record);
+
+                    this.cs_update_record_update_indexes(record, new_record);
+
+
+
+                    //this.cs_update_record_update_indexes
+
+
+                }
+            })
+
+            // fix those problem records. 
+
+
+            / *
+            let new_id = this.model.map_tables['bittrex currencies'].pk_incrementor.increment();
+            console.log('new_id', new_id);
+
+            if (new_id > 1) {
+
+            }
+            * /
+
+        });
+
+        return res;
+
+        */
+
+        let res = new Evented_Class;
+
+        let obs_through = (source, target) => {
+            source.on('next', data => target.raise('next', data));
+            source.on('error', err => target.raise('error', err));
+            source.on('complete', () => target.raise('complete'));
+        }
+
+        this.diagnose((err, arr_problems) => {
+            if (err) {
+                res.raise('error', err);
+            } else {
+                console.log('arr_problems', JSON.stringify(arr_problems));
+
+                //throw 'stop';
+
+                let map_problems_by_type = {};
+                each(arr_problems, problem => {
+                    console.log('problem', problem);
+
+                    map_problems_by_type[problem[0]] = map_problems_by_type[problem[0]] || [];
+
+                    each(problem[1], individual_problem => {
+                        map_problems_by_type[problem[0]].push(individual_problem);
+                    });
+                    //map_problems_by_type[problem[0]].push(problem[1]);
+
+                });
+
+                console.log('map_problems_by_type', JSON.stringify(map_problems_by_type));
+
+                //throw 'stop'
+
+
+                // Check for malformed records in the currency table.
+
+                let map_malformed_records_by_table = {};
+
+
+                if (map_problems_by_type['malformd table records']) {
+                    each(map_problems_by_type['malformd table records'], malformed_record_set => {
+                        // not just in the tables table.
+
+                        console.log('malformed_record_set', malformed_record_set);
+
+                        each(malformed_record_set, malformed_record => {
+                            console.log('malformed_record', malformed_record);
+                            //throw 'stop';
+
+                            map_malformed_records_by_table[malformed_record.table] = map_malformed_records_by_table[malformed_record.table] || [];
+                            map_malformed_records_by_table[malformed_record.table].push(malformed_record);
+                        })
+                    })
+                } else {
+                    console.log('no malformed table records');
+                }
+
+                console.log('map_malformed_records_by_table', map_malformed_records_by_table);
+
+                // Then if there are no malformed currency records...
+
+                let malformed_currency_records = map_malformed_records_by_table['bittrex currencies'];
+
+                if (malformed_currency_records && malformed_currency_records.length > 0) {
+                    throw 'Not yet able to fix malformed currency records';
+                } else {
+                    console.log('no malformed currency records');
+
+
+                    //deal with the currencies overwritten.
+                    // will move whatever has overwritten early values, having found where it should be.
+                    //  need to update the incrementor as part of such a move (or just after it).
+
+                    // Then put the correct record back in place.
+
+                    //download_put_currency_at_id
+
+                    // Then when data8 is passing validation, get the data from it.
+                    // Proceed to attempt to recover data from other servers too - at least run diagnose.
+
+
+                    // Just need to get the current issues solved on multiple PCs.
+                    //  Would be a different diagnosis on different machines, more of them will be wrong on the older machines.
+
+                    // Just need to get the data collection working reliably and properly.
+                    //  A few days referring back will be enough in many cases.
+
+                    // What about putting together all of the DB changes, allow them to be confirmed before doing them.
+
+                    // Could see the incrementor changes that way too.
+
+                    // currencies overwritten'
+
+                    let currencies_overwritten = map_problems_by_type['currencies overwritten'];
+                    console.log('currencies_overwritten', currencies_overwritten);
+                    console.log('map_problems_by_type', map_problems_by_type);
+                    //throw 'stop';
+
+                    // Could try to make all of the fixes at once, putting them together.
+
+                    let obs_fix = this.fix_currencies_overwritten(currencies_overwritten);
+
+                    // then when that is done, fix the malformed markets records.
+                    //  will use the values from the new currency values.
+                    // curreny codes missing from db
+                    let c_missing = map_problems_by_type['currency codes missing from db'];
+
+                    console.log('c_missing', c_missing);
+
+
+                    if (c_missing.length > 0) {
+
+                        this.ensure_bittrex_currencies((err, res) => {
+                            console.log('currencies ensured');
+                        })
+
+                    }
+
+                    // then add those missing currency records.
+                    //  Could do the standard ensure bittrex currencies.
+
+                    //this.ensure_
+
+
+
+
+                    // Could put together put instructions.
+
+
+
+
+
+
+
+
+
+                }
+
+
+
+                // deal with some problems before others.
+
+                // come up with a solution plan.
+
+                // move overwritten records to the end, freeing space.
+                //  start with the first overwritten record.
+
+                // Move it from its current position to the end of its autoincrementing table.
+
+
+
+
+
+
+
+                //let obs_fix = this.fix_problems(arr_problems);
+                //obs_through(this.fix_problems(arr_problems), res);
+            }
+        })
+        return res;
+    }
+
+
+    // Get currencies overwritten fixes
+
+
+    // get curency overwritten fix
+
+    // Modelling broken records could work.
+    //  Invalid key records - would store the key value, but not attempt to render it as JS objects.
+
+
+
+    fix_currency_overwritten(currency_overwritten_problem, new_id) {
+        let res = new Evented_Class();
+
+
+        // and have an id to assign it.
+
+        console.log('fix_currency_overwritten currency_overwritten_problem', currency_overwritten_problem);
+
+        // modify the record.
+        let decoded_record = currency_overwritten_problem.record;
+
+        //let decoded_record = database_encoding.decode_model_row(currency_overwritten_problem.record);
+
+        //console.log('decoded_record', decoded_record);
+
+        let record_for_deletion = clone(decoded_record);
+        let record_for_update = clone(decoded_record);
+        let record_for_put = clone(decoded_record);
+        record_for_put[0][1] = new_id;
+
+        console.log('record_for_deletion', record_for_deletion);
+        // get the index records for the record for deletion
+
+        console.log('record_for_put', record_for_put);
+
+
+        // don't make the change yet, but now the logic is clearer.
+
+        // And create the currency record that should be in place.
+        //  Get the downloaded info for whatever currency it is.
+
+        // only for bittrex currencies so far.
+        //  probably best to change to a unified currencies API, where the exchange name or id gets provided each time.
+
+        // Indexing trades by timestamp as well as trades will probably prove useful.
+        //  Need to get out of this complication to do with wrong bittrex records.
+
+        this.bittrex_watcher.get_map_currencies_info((err, map_currencies_info) => {
+            if (err) {
+                res.raise('error', err);
+            } else {
+                //console.log('map_currencies_info', map_currencies_info);
+
+
+                let code_overwritten = currency_overwritten_problem.should_be;
+
+                let code_overwritten_info = map_currencies_info[code_overwritten];
+                //console.log('code_overwritten_info', code_overwritten_info);
+
+                record_for_update[1][0] = code_overwritten_info[0];
+                record_for_update[1][1] = code_overwritten_info[1];
+                record_for_update[1][2] = code_overwritten_info[2];
+                record_for_update[1][3] = code_overwritten_info[3];
+                record_for_update[1][4] = code_overwritten_info[4];
+                record_for_update[1][5] = code_overwritten_info[5];
+                record_for_update[1][6] = code_overwritten_info[6];
+                record_for_update[1][7] = code_overwritten_info[7];
+
+
+
+                //console.log('record_for_update', record_for_update);
+
+                // then could use the model Table to create the index records.
+
+                // however, there is core DB functionality that should be able to do this easily.
+
+                //this.model.arr_records_to_records_with_index_records
+                //  creates the Record objects with the right Table objects, then returns them all as an array.
+                //   then will be able to put them into the DB relatively easily.
+
+
+                // Also need to fix the malformed market records (later, after fixing currency records)
+
+                let no_kp_put = clone(record_for_put);
+                //no_kp_put[0].shift();
+                let no_kp_update = clone(record_for_update);
+                //no_kp_update[0].shift();
+                //let no_kp_put = clone(record_for_put)[0].shift();
+                //let no_kp_update = clone(record_for_update)[0].shift();
+
+                let all_keys_to_delete = this.model.create_index_records_by_record(record_for_deletion);
+                console.log('all_keys_to_delete', all_keys_to_delete);
+
+                let all_records_to_put = this.model.arr_records_to_records_with_index_records([no_kp_put, no_kp_update])
+                console.log('all_records_to_put', all_records_to_put);
+
+                // Need a new server-side function to handle this.
+                //  In fact, need the full path for doing it.
+
+                //  This looks like one of the things where we need both the ll version and the hl version.
+
+                // Possibly the keys should be encoded as keys on the way to the server?
+                //  Right now we are using somewhat more general purpose, simpler to use, encoding.
+
+                // Possibly keys should be encoded as keys before going to the server.
+                //  Could maybe have a Key_Set class, to help its easy / efficient encoding and decoding.
+                //  More of the tricky, repeated functionality is getting put in the Model.
+
+                // Key_Set would just have an inner buffer, and have functions that can split them up.
+
+                //  Would be used in the background much of the time.
+                //  Also Record_Set
+                //      Buffered_Record
+                //       Like Record, but backed by a Buffer.
+
+                // Should have a system that automatically encodes the keys on the way to the DB.
+                //  Later, can use key specific encoding, or buffer_list encoding.
+
+                // Need to delete the records successfully.
+                //  For the moment, will download a backup of the full data8 db file.
+
+
+
+
+
+                this.ll_delete_records_by_keys(all_keys_to_delete, (err, res_delete) => {
+                    if (err) {
+                        response.raise('error', err);
+                    } else {
+
+                        console.log('records deleted (by key): ', all_keys_to_delete);
+
+                        // then batch put the ones we want.
+
+
+                        // Will do an upgrade to put records.
+                        //  A Record_List object may help here.
+                        //  Put together the record list easily, then get its buffer value.
+                        //   Will be encoded as an array of buffers.
+                        //   Or array of arrays?
+                        //    Could have records encoded on the server as arrays.
+                        //   Or as a list of buffers that is interpreted as key value pairs.
+
+                        // And server-side, could decode this using the Record_List.
+
+                        //this.
+
+                        let rl = new Record_List(all_records_to_put);
+
+                        // Then should be able to send this record list easily.
+                        //  It should be understandable by put records.
+
+                        // May be best to test this separately.
+
+                        // Being able to create and use a table without defining any fields would be useful (for testing too).
+
+                        // and then get the decoded values from the record list.
+
+                        console.log('rl.decoded', rl.decoded);
+
+                        // can make a 'put' command that uses a Record_List, it would be decoded into a buffer on the server.
+                        //  however - we may already know it's a buffer.
+                        //   best to have it typed as a buffer for when it get put into other arrays.
+
+
+
+                        this.put(rl, (err, res_put) => {
+                            if (err) {
+                                throw err;
+                            } else {
+                                console.log('cb put');
+
+                                console.log('rl', rl);
+
+
+
+                                process.nextTick(() => {
+                                    res.raise('complete');
+                                });
+
+
+
+
+                            }
+                        });
+
+
+
+
+
+
+                    }
+                });
+
+
+
+                /*
+                this.put(all_records_to_put, (err, res_put) => {
+                    // Want a simple put function.
+                    //  Puts the records as an array.
+                    //  Using an OO system for the record-list will be useful.
+                    //  Will be able to get them all as a buffer easily.
+                    //   Would be stored internally as a buffer.
+
+
+
+
+                });
+                */
+
+
+
+                //throw 'stop';
+
+
+
+
+                // delete the keys
+
+
+
+
+
+
+
+
+
+
+
+
+                // put 2 records (more with indexes)
+                //  it will overwrite the overwritten record. no need to delete a record.
+
+                // Need to put these records with their appropriate indexing.
+                //  Could have something on the server side to create a record index whenever it is put.
+                //  However here, want to use client-side functionality.
+
+
+
+
+
+
+
+                //record_for_update[0][1] = currency_overwritten_problem.at_id;
+                // already is.
+
+
+
+                // 
+
+
+            }
+        })
+
+
+
+
+
+
+
+
+
+
+
+
+
+        return res;
+
+    }
+
+
+
+    fix_currencies_overwritten(arr_currencies_overwritten_problems) {
+
+        let res = new Evented_Class();
+
+        let model = this.model;
+        let table = model.map_tables['bittrex currencies'];
+
+
+        if (arr_currencies_overwritten_problems.length > 0) {
+            console.log('pre get_table_last_id');
+            this.get_table_last_id('bittrex currencies', (err, last_bittrex_currency_id) => {
+                if (err) {
+                    console.trace();
+                    throw err;
+                } else {
+                    console.log('last_bittrex_currency_id', last_bittrex_currency_id);
+
+                    // OK, now this is working.
+
+                    // Observable sequencer.
+
+                    // Best to do it one at a time. maybe
+
+
+                    // Generating the changes would work nicely.
+                    //  Replace rows by keys.
+
+                    // Then also need to replace the malfomrmed bittrex markets table records later on.
+                    //  Then need to keep the data together and verify it too.
+
+
+
+
+
+                    // here is the place to create the db record changes.
+                    //  It may be worth making a number of commands in the model
+
+                    // Definitely use observable sequencer
+                    //  But the new observable API needs to have a .subscribe in order to start it and get the data.
+
+                    // Having fns so it can process observables...
+
+                    //let fns = new Fns();
+
+
+                    // put together the observables list
+
+                    let observables = [];
+
+                    let sequence_observable_calls = (calls) => {
+
+                        let c = 0,
+                            l = calls.length;
+                        let res = new Evented_Class();
+
+                        let go = () => {
+                            console.log('c', c);
+                            if (c < l) {
+                                //let obs = observables[c];
+                                //console.log('calls[c]', calls[c]);
+
+                                let [context, fn, args] = calls[c];
+                                let obs_fn = fn.apply(context, args);
+                                obs_fn.on('next', data => {
+                                    res.raise('next', {
+                                        args: args,
+                                        data: data
+                                    })
+                                });
+                                obs_fn.on('error', err => {
+                                    res.raise('error', err);
+                                })
+                                obs_fn.on('complete', () => {
+                                    console.log('has raised complete');
+                                    res.raise('next', {
+                                        args: args,
+                                        complete: true
+                                    })
+                                    c++;
+                                    go();
+                                });
+                            } else {
+                                console.log('done');
+                                res.raise('complete');
+                            }
+
+                        }
+
+                        process.nextTick(go);
+                        //go();
+
+                        return res;
+
+                    }
+
+
+                    each(arr_currencies_overwritten_problems, currency_overwritten_problem => {
+                        console.log('currency_overwritten_problem', currency_overwritten_problem);
+                        // need to do it one by one.
+                        observables.push([this, this.fix_currency_overwritten, [currency_overwritten_problem, last_bittrex_currency_id++]]);
+                        // Generate the fix, apply it now?
+
+                        // Need to come up with the correct records / IDs for both of them
+                        //  get the next available ID.
+                        //   that could be done with incrementing in the model.
+
+                        // Could maybe use verified_increment
+                        //  where it gives the starting increment value, checks it, and then gets the new incrementor value back.
+
+                        // Or verify the incrementor is where it should be
+                        //  Then increment the next one.
+
+                        // Doing this in the model is a bit too longwinded, the model does not have these tables loaded...
+                        //  But could load them. Hard to get the model to load invalid records though.
+
+                        // call function to work out what these records should be.
+                        // do it one by one...
+                        // or get the last id value from the db table
+
+
+                    })
+
+                    let obs_all = sequence_observable_calls(observables);
+                    obs_all.on('next', data => {
+                        //console.log('data', data);
+                    });
+                    obs_all.on('complete', () => {
+                        console.log('fix_currencies_overwritten inner obs complete');
+                        res.raise('complete')
+                    });
+
+                }
+
+            })
+        } else {
+            res.raise('complete');
+        }
+
+
+
+
+
+
+
+        return res;
+
+    }
+
     // Connect to an existing DB, and be able to get all Bittrex records easily.
 
     // Syncing an entire database seems possibly more important / useful though.
@@ -1342,9 +3109,12 @@ if (require.main === module) {
     server_data4.access_token = access_token;
     var server_data5 = config.nextleveldb_connections.data5;
     server_data5.access_token = access_token;
-
     var server_data6 = config.nextleveldb_connections.data6;
     server_data6.access_token = access_token;
+    var server_data7 = config.nextleveldb_connections.data7;
+    server_data7.access_token = access_token;
+    var server_data8 = config.nextleveldb_connections.data8;
+    server_data8.access_token = access_token;
 
 
     local_info.access_token = access_token;
@@ -1357,7 +3127,7 @@ if (require.main === module) {
 
     // May be possible to edit the fields, possibly validate the fields?
 
-    var client = new Assets_Client(server_data2);
+    var client = new Assets_Client(local_info);
 
     // Some of the clients have now got corrupted data.
 
@@ -1403,7 +3173,28 @@ if (require.main === module) {
         if (err) {
             throw err;
         } else {
-            console.log('Assets Client connected to', server_data3);
+            // Because the incrementor was loaded wrong on the server.
+            //  I thought that got corrected before.
+
+            // The first part of diagnosis is looking up the incrementor value for that table.
+            //  The model will have been loaded, so it should be high.
+
+
+
+            // client.fix_table_incrementor_value
+            //  make it one more than the maximum id.
+
+            // get table maximum id...?
+
+
+
+
+
+
+
+            console.log('Assets Client connected to', server_data8);
+
+            // Model should have been loaded.
 
 
             // 22/03/2018 - Nice to see this still works.
@@ -1724,12 +3515,33 @@ if (require.main === module) {
                         throw err;
                     } else {
                         //console.log('bittrex currencies records', res);
-                        console.log('bittrex currencies')
-                        each(res, item => console.log(item[0][0] + ', ' + item[1][0]));
+                        //console.log('bittrex currencies')
+                        each(res, item => console.log('item' + item[0][0] + ', ' + item[1][0]));
                     }
                 })
             }
-            test_get_table_records();
+            //test_get_table_records();
+
+            let diagnose = () => {
+                let obs_problems = client.diagnose();
+
+                obs_problems.on('next', problem => {
+                    console.log('problem', problem);
+                });
+            }
+
+            //diagnose();
+
+            let diagnose_fix = () => {
+                let obs_fixes = client.diagnose_fix();
+
+                obs_fixes.on('next', fix => {
+                    console.log('obs_fixes', obs_fixes);
+                });
+            }
+
+            diagnose_fix();
+
 
             // get the fields for the table.
             //  Probably best to read this out of the model, server side.
