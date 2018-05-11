@@ -7,8 +7,28 @@
 // Getting closer to being able to (more) automatically map one record type to another.
 //  Still need this in order to most effectively add the Bittrex Markets records.
 
+// A new version of assets client may well be best.
+//  Make it work for all exchanges.
+//   Indexing records is harder if they don't have a unique assigned key???
+//    Well, every record has a key
+//   Could index the snapshot or trade records.
 
 
+// Seems like getting a new version up and running very soon would be best.
+//  Run it on a new DB, import the data from elsewhere.
+//   Saved backups could be imported. Import => transpose. 
+
+// Very soon, want it handling lots of data from multiple exchanges.
+//  Running means per second would be of great use.
+
+
+
+// Likely seems best to make the new multi-exchange (multi-data-source too) version and use that.
+//  Some data sources maybe are not exchanges, eg CMC.
+//  Data provider, with 'tag' or option of 'Exchange'.
+
+// Maybe record tags would be a useful feature. Or flags. Quick reading to see which flags are there, and to add and delete them.
+// A new version for data from all exchanges / sources would be best.
 
 const tables = [
     [
