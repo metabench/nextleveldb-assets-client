@@ -1,6 +1,31 @@
 // Maybe rename as this only being for Bittrex.
 //  It handles quite a few Bittrex things in detail, but only with there being a specific Bittrex table.
 
+// Redoing this to work with multiple exchanges, and candlestick records, and full trade records, even full order book records.
+
+// nextleveldb-fin-client as a replacement?
+
+// will have functionality that supports multiple exchanges, also other data sources.
+//  Want to give this a few features that make it good for general information gathering.
+
+// It seems as though the current DB structure just about works for Bittrex, now I want to make much simpler (overall) code for dealing with multiple currencies.
+//  This version has code to fix problems that have arisen, hopefully these problems won't crop up with the new version.
+//  Will go heavier on indexing for the moment, in order to make faster queries.
+
+
+// Could even use as much of the basic functionality as possible.
+//  Maybe a fin client makes a lot of sense still, as not all will be covered in lower levels.
+
+
+// Assets DB will be different to the Bittrex DB.
+//  Need to make it more generalised.
+//  There would need to be some fields that don't get used by the 
+
+
+
+
+
+
 
 
 
@@ -163,6 +188,8 @@ const promisify = require('bluebird').promisify;
 
 // So if one of these is not correct then we have identified a problem.
 
+// Best to make use of promises and other newer tech.
+//  Making client support promises better will help. Iterators of some objects will help too. Making objects iterable.
 
 
 let map_list_correct_bittrex_currency_ids = {
@@ -191,11 +218,92 @@ let map_list_correct_bittrex_currency_ids = {
 // Missing low id bittrex coins - check for them
 
 
+let last = (deferred) => {
+    console.log('deferred', deferred);
+    if (deferred instanceof Evented_Class) {
+        let val;
+        let res = new Promise((resolve, reject) => {
+            deferred.on('next', data => val = data);
+            deferred.on('error', err => reject(err));
+            deferred.on('complete', () => resolve(val));
+        })
+        return res;
+
+
+    } else if (deferred instanceof Promise) {
+        return deferred;
+    } else {
+        throw 'NYI';
+    }
+}
+
+// obs to prom, obs_to_prom, to_prom, toPromise
+let resolver = (deferred) => {
+    if (deferred instanceof Evented_Class) {
+        let res_all = [];
+        let res = new Promise((resolve, reject) => {
+
+            // But the data could be a page of data.
+
+            deferred.on('next', data => {
+                //console.log('data', data);
+                res_all.push(data);
+
+            });
+            deferred.on('error', err => reject(err));
+            deferred.on('complete', () => resolve(res_all));
+        })
+        return res;
+    } else if (deferred instanceof Promise) {
+        return deferred;
+    } else {
+        throw 'NYI';
+    }
+}
+
+// Split them into model rows?
+let page_splitter = (obs) => {
+    let res = new Evented_Class();
+
+    obs.on('next', data => {
+        let rl = new Record_List(data);
+
+        //console.log('rl.decoded', rl.decoded);
+
+        // how about each
+        //  for in would be cool, so an iterator would be best.
+
+        // rl.keys
+
+        for (let key of rl) {
+            //console.log('key', key);
+            //console.log('key.decoded', key.decoded);
+            res.raise('next', key);
+        }
+    })
+    obs.on('complete', () => res.raise('complete'));
+    obs.on('error', err => res.raise('error', err));
+
+    return res;
+}
+
+let decoder = obs => {
+    let res = new Evented_Class();
+
+    obs.on('next', record => {
+        res.raise('next', record.decoded);
+    })
+    obs.on('complete', () => res.raise('complete'));
+    obs.on('error', err => res.raise('error', err));
+
+    return res;
+}
 
 
 
 
-const prom_opt_cb = (prom, opt_cb) => {
+
+const prom_or_cb = (prom, opt_cb) => {
     if (opt_cb) {
         prom.then((res) => {
             opt_cb(null, res);
@@ -272,106 +380,11 @@ class Assets_Client extends Client {
 
 
 
-
-    // Currency lookup function.
-
-
-
-    // ensure_record
-
-    // Making a simple DB with test case would be nice.
-
-
-
-
-
-
     // Would get called when there is a new bittrex currency.
     put_bittrex_currency(arr_bittrex_currency, callback) {
-        //console.log('put_bittrex_currency', arr_bittrex_currency);
-
-        // This does not work if the currencies are not indexed.
-
-
-        // A streaming validate table indexes looks possible.
-        //  Could get back the records as well as validation that the indexes are correct.
-
-        // Server side validation of index records looks like it would be useful.
-        //  For any record, should be able to get its index keys.
-
-
-
-
-
-
-        // Maybe validate the record to go in against the Model.
-        //  We don't already have the key to these records.
-
-        // Using the Model at some stage could be useful. It's got pk incrementor values.
-
-        // Using a lower level table_pk_increment function could do the job, where the incrementor values in the DB are updated.
-
-        // Index records have not been loaded into the model.
-
-
-        // do this using the Model for the moment.
         let tbl_bittrex_currencies = this.model.map_tables['bittrex currencies'];
-        // For some reasons, the pk incrementor has not been set up properly in the model.
-        //  Its value is at 0.
-        //  Value should be appropriately high.
-
-
-        //console.log('tbl_bittrex_currencies.pk_incrementor', tbl_bittrex_currencies.pk_incrementor);
-
-        // Then use add records to this.
-
-
         let new_record = tbl_bittrex_currencies.add_record(arr_bittrex_currency);
-        console.log('new_record', new_record);
-        console.trace();
-        throw 'stop';
-
-        // But this overwrites the last one.
-        //  Not sure we have loaded the right incrementor values into the model upon start of the assets client.
-        //   Need to check.
-
-
-
-
-        // Has the side effect of maybe changing an incementor value.
-        //console.log('new_record', new_record);
-
-        //console.trace();
-        //throw 'stop';
-
-        // The client should be able to put a model record.
-        //  That would use a batch put operation that also puts the index values into place.
-
-        // What about incrementors?
-
-        // Option to set the incrementor value?
-        //  The relevant table would need to have its incrementor value updated.
-
-        //  Put the record, and update the table's incrementor value in the db.
-
-        // We may have lost data or data reliability. Possibility of records having got in there with the wrong currency and / or market.
-
-        // Updating the db's incrementor from the model when putting a record makes a lot of sense.
-
-        // update_incrementor_value
-
-        // Update the incrementor value from the model.
-        //  Using a less low level interface would help at times.
-
-
-
-        this.put_model_record(new_record, callback); // This does put the index records too.
-
-
-
-        // then put_model_record.
-        //  It would use the model to generate the index values, and then put them into the DB.
-
+        this.put_model_record(new_record, callback);
     }
 
     // does full table scan right now.
@@ -382,25 +395,6 @@ class Assets_Client extends Client {
 
 
     put_bittrex_market(arr_bittrex_market, callback) {
-
-        // Some kind of transformation / lookup
-
-        //  Could have a lower level advanced record put.
-        //   It would check that the fields align, if not, selects the fields appropriately.
-
-        //  Could define alternate data input structures, with it carrying out the lookups.
-
-        // Defining Data Transformations and Lookups would be useful.
-        //  Could just use Binary_Encoding to send data to the server, not as the DB record types, but as they come in.
-        //  The DB transforms them according to a given definition.
-
-
-        // Having data transformation within the Model would be useful for various reasons.
-        //  Could call upon it server side too, and it would be convenient doing it in the client in a variety of cases.
-
-        // For the moment though, it would not be the fastest way to do it.
-        //  Seems like the most interesting way though.
-
         let tbl_bittrex_currencies = this.model.map_tables['bittrex currencies'];
         let tbl_bittrex_markets = this.model.map_tables['bittrex markets'];
         // For some reasons, the pk incrementor has not been set up properly in the model.
@@ -424,7 +418,7 @@ class Assets_Client extends Client {
         // No need to do automated FK lookup here to save a small amount of code here, creating a much larger amount of code and complexity elsewhere.
         //  Then put these market records into the DB properly.
 
-        console.log('arr_bittrex_market', arr_bittrex_market);
+        //console.log('arr_bittrex_market', arr_bittrex_market);
 
         let base_code = arr_bittrex_market[0];
         let market_code = arr_bittrex_market[1];
@@ -436,7 +430,7 @@ class Assets_Client extends Client {
 
 
         Promise.all([pr_base_id, pr_market_id]).then(values => {
-            console.log('values', values);
+            //console.log('values', values);
             let [base_id, market_id] = values;
 
             let kv_record = [
@@ -486,36 +480,6 @@ class Assets_Client extends Client {
     ensure_at_bittrex_currencies(at_bittrex_currencies, callback) {
         // iterate through the bittrex currencies.
         let go = async () => {
-
-            // Are all of the existing currencies in the DB indexed?
-
-            // await maintain_table_index
-
-            // maintain_table_index could operate on the server.
-
-            // Having a server side function to do that would be quite useful.
-
-            //  It would check to see if every index record that should be there actually is there.
-
-            // Indexing and index lookups is one part of the DB that is not fully there yet.
-            //  Likely to require a fair bit more coding on the server, and it will be best to encapsulate it clearly into the relevant concepts.
-
-            // Server side maintenance and checking of indexes will be very useful.
-            //  Would help to keep the client application simpler at least, and it should not require too much client-server communication.
-
-
-
-
-
-
-            // after maintain_table_index, ensuring currencies should work fine.
-            //  possibly in the past a number of currencies were added, without being indexed
-
-            // Also need to get indexing working as standard when adding records that get indexed.
-
-
-
-
             for (let arr_bittrex_currency of at_bittrex_currencies.values) {
                 console.log('arr_bittrex_currency', arr_bittrex_currency);
                 let res_ensure = await this.ensure_arr_bittrex_currency(arr_bittrex_currency);
@@ -555,54 +519,14 @@ class Assets_Client extends Client {
     ensure_arr_bittrex_currency(arr_bittrex_currency, callback) {
         let a = arguments,
             l = a.length;
-        //console.log('l', l);
-        //console.log('arr_bittrex_currency', arr_bittrex_currency);
-
-        // get the currency by name
-
         let inner = (callback) => {
             let code = arr_bittrex_currency[0];
-            //console.log('pre get_bittrex_currency_id_by_code');
-            // These should be indexed in the DB.
-
-            // This does an index lookup.
-            //  With repairing, best to fix the indexes (on all indexed records?) to start with.
-
-            // A procedure to go through the database, checking for any index records that do not correctly refer to a record.
-            //  Will need to check that the record's index value corresponds to that index data.
-
-            // Seems like a somewhat complex checking procedure, but it will solve the wrong lookups of coins.
-            //  It looks like a record was overwritten because the incrementor was wrong (or not adding 1), and a new index record was made too.
-
-            // Seems like potentially quite a bit more work to get the data back out of these databases, while correcting the structural records.
-
-            // Will be best to also get the lower resolution historic data for checking as the data gets put into place in the corrected database.
-            //  May be worth running a DB with a limited number of currencies for testing purposes.
-
-            // CockroachDB may still be the best option.
-            //  However would still require a fair bit of code to wrap it, but core db is proven to be reliable.
-
-            // Could have a reindex_table function.
-            //  Or 2-way where it goes through all index records, checking they are correct
-            //   Then it goes through the table records, checking they have correct index records.
-
-
-
-
-
-
-
             this.get_bittrex_currency_id_by_code(code, (err, currency_id) => {
                 if (err) {
                     callback(err);
                 } else {
                     console.log('found currency_id', currency_id);
                     if (typeof currency_id === 'undefined') {
-                        // it's not already in the DB.
-                        //  add the currency record to the DB.
-
-                        // Could check the index value is correct here.
-
                         this.put_bittrex_currency(arr_bittrex_currency, (err, res_put) => {
                             if (err) {
                                 callback(err);
@@ -640,6 +564,10 @@ class Assets_Client extends Client {
     }
 
     ensure_arr_bittrex_market(arr_bittrex_market, callback) {
+
+
+        // Better done with an observable giving back the result, and using async code (loop) internally
+
         //console.log('arr_bittrex_market', arr_bittrex_market);
         let inner = (callback) => {
             // need to lookup the market currency and mase currency
@@ -711,6 +639,9 @@ class Assets_Client extends Client {
     }
 
     ensure_bittrex_currencies(callback) {
+
+        // This would be nice to promisify / observerify the output.
+
         this.bittrex_watcher.download_bittrex_structure((err, bittrex_structure) => {
             if (err) {
                 callback(err);
@@ -1044,23 +975,8 @@ class Assets_Client extends Client {
         let res = {};
 
         obs_bittrex_currencies.on('next', data => {
-            //console.log('obs_bittrex_currencies data', data);
-
-            //console.log('data', data);
-
             let id = data[0][1];
             res[id] = data;
-
-            // may need to split the data.
-            //  not ideal that it does not unpage.
-
-
-
-            //throw 'stop';
-
-
-            //codes.push(data[1][0]);
-
         })
         obs_bittrex_currencies.on('complete', () => {
             callback(null, res);
@@ -1165,146 +1081,36 @@ class Assets_Client extends Client {
      * @memberof Assets_Client
      */
     get_bittrex_market_id_by_name(market_name, callback) {
-
-        // Don't want to do a client-side lookup for this?
-
-        // The local model can contain different amounts of data.
-        //  Will be worth having the operations being able to complete without there being a local model.
-        //  Making or using the local model can make sense for larger data-set operations, and creating tables.
-        //  When just accessing records or doing index lookups, should be able to use the db itself.
-
-        // The market id is a combination of 2 currency ids.
-
-        // The bittrex market ID is a compound field made out of market_currency_id, base_currency_id
-
-        // So basically want to fish out the [market_currency_id, base_currency_id] when we give it the name
-
-        // give it the field name
-        //  dows not get the id, but the primary key value.
-
-
-        // Market id can be considered to be the PK.
-
-        // get table record pk first.
-        //  but we can do that by going by the pk.
-
-        // get_table_record_pk_by_index_lookup('bittrex markets', 'MarketName', market_name);
-
-
-
-
         if (callback) {
             this.get_table_record_pk_by_index_lookup('bittrex markets', 'MarketName', market_name, callback);
         } else {
             console.log('no cb');
             return this.get_table_record_pk_by_index_lookup('bittrex markets', 'MarketName', market_name);
         }
-
-        //throw 'stop';
-
-
-
-
-        /*
-        if (this.model) {
-            // 
-
-            this.table_index_lookup('bittrex markets', 0, market_name, callback);
-        } else {
-            console.log('market_name', market_name);
-
-            
-            //throw 'nyi';
-        }
-        */
     }
-
-
-    // not get...count
-    //  just count as a verb
-
-    /**
-     * 
-     * 
-     * @param {string} market_name 
-     * @param {any} callback 
-     * @memberof Assets_Client
-     */
-
-    /*
-    get_bittrex_market_snapshot_record_count(market_name, callback) {
-        // construct the key lookup section
-        //  tkp, market name
-        // get_table_index_selection_records
-        // lookup the id of the market name
-        // no, need to look up the market name in the bittrex markets table.
-        // Not sure that has been indexed on the client side either.
-        // need to look up the 
-
-        // table selection record count
-        //  maybe choose the beginning of the key.
-        var that = this;
-        //console.log('market_name', market_name);
-        this.get_bittrex_market_id_by_name(market_name, (err, market_id) => {
-            if (err) {
-                callback(err);
-            } else {
-
-                //var key = [market_name];
-                var key = [market_id];
-                //console.log('key', key);
-
-                console.log('pre count');
-
-                that.count_table_selection_records('bittrex market summary snapshots', key, (err, count) => {
-                    if (err) {
-                        callback(err);
-                    } else {
-                        console.log('count', count);
-
-                        //throw('stop');
-                        callback(null, count);
-
-                    }
-                });
-            }
-        });
-    }
-    */
 
     // Would be nice to use observable rather than callback / optional observable.
 
     count_bittrex_market_snapshot_records(market_name, callback) {
-
-        console.log('count_bittrex_market_snapshot_records');
+        //console.log('count_bittrex_market_snapshot_records');
         // Could callbackify as option, want to make this using an observable.
         let res = new Evented_Class();
         // Observables will help because there can be varying levels of decoding and analysis, and once some util functions are there, 
-
         (async () => {
-            console.log('market_name', market_name);
+            //console.log('market_name', market_name);
             let market_id = [(await this.get_bittrex_market_id_by_name(market_name))];
-            console.log('market_id', market_id);
-
-
-
-            //throw 'stop';
-
-            console.log('pre count_table_selection_records');
+            //console.log('market_id', market_id);
+            //console.log('pre count_table_selection_records');
             let obs_table_records = this.count_table_selection_records('bittrex market summary snapshots', market_id);
-            console.log('obs_table_records', obs_table_records);
-
+            //console.log('obs_table_records', obs_table_records);
             obs_through(obs_table_records, res);
         })();
-
-        console.log('!!callback', !!callback);
+        //console.log('!!callback', !!callback);
         if (callback) {
             obs_to_cb(res, callback);
         } else {
             return res;
         }
-
-
     }
 
     get_bittrex_market_snapshot_records(market_name, callback) {
@@ -1318,86 +1124,15 @@ class Assets_Client extends Client {
 
         (async () => {
             let market_id = [await this.get_bittrex_market_id_by_name(market_name)];
-            console.log('market_id', market_id);
-
+            //console.log('market_id', market_id);
             let obs_table_records = this.get_table_selection_records('bittrex market summary snapshots', market_id);
             obs_through(obs_table_records, res);
-
-
         })();
         if (callback) {
             obs_to_cb(res, callback);
         } else {
             return res;
         }
-
-        // Using an async promise may be nicer here.
-
-
-
-        // select from where
-        //  select record value by indexed field.
-
-
-        /*
-
-        this.get_bittrex_market_id_by_name(market_name, (err, market_id) => {
-            if (err) {
-                callback(err);
-            } else {
-
-                //var key = [market_name];
-                var key = [market_id];
-                console.log('key', key);
-
-                // Did this get deleted too?
-
-                // Would generally be better through an observable.
-
-                // Observable functional processing will be nicer.
-                //  Maybe with pause so that we can get the data back one by one easily.
-
-                // 
-
-
-                // This function here could do with being made into an observable.
-                that.get_table_selection_records('bittrex market summary snapshots', key, (err, records) => {
-                    if (err) {
-                        callback(err);
-                    } else {
-
-                        console.log('records', records);
-
-                        // better to use Record_List
-
-                        // Decode them with binary encoding - no, changing to using the buffer backed record list.
-
-
-
-                        let split_records = database_encoding.buffer_to_row_buffer_pairs(records);
-
-
-                        //console.log('split_records', split_records);
-
-                        let decoded = database_encoding.decode_model_rows(split_records);
-                        //console.log('decoded', decoded);
-
-                        console.log('decoded.length', decoded.length);
-
-                        //throw 'stop';
-
-
-                        //console.log('count', count);
-
-                        //throw('stop');
-                        callback(null, decoded);
-
-                    }
-                });
-            }
-        });
-
-        */
     }
 
     get_bittrex_at_currencies_markets(callback) {
@@ -1407,235 +1142,29 @@ class Assets_Client extends Client {
         ]).go(callback);
     }
 
+
+    // This function is relatively concise.
+    //  Want to improve some other functions to make them more like it.
     get_akvt_bittrex_market_snapshot_records(market_name, callback) {
-        // get the fields
-        var that = this;
-
-
-
-        // If the table does not exist, could raise a callback or resolvable error.
-        //  array key value table.
-        // check if the table exists.
-
-
-        // Want a simple function that returns true or false.
-        //  See if the table can be found in the index records.
-
-
-        // Would prefer shorter code by doing this using promises / observables and async await.
-
-
-        // Getting the field names / info alongside the results.
-
-        //  get table resultset
-
-        //  The resultset could have the field info as well?
-
-        // toPromise?
-        //  That's in rxJS.
-
-        // Could have to_promise function that may turn an observable into a promise.
-
-        // The whole thing needs to be loaded at once.
-
         let res = new Promise((resolve, reject) => {
-
             (async () => {
                 let table_kv_field_names = await this.get_table_kv_field_names('bittrex market summary snapshots');
-                console.log('table_kv_field_names', table_kv_field_names);
-
-
-                // observable to promise, get all to use with await.
-                // all()
-
-
-                // what about 'done' function
-
-                let last = (deferred) => {
-                    console.log('deferred', deferred);
-                    if (deferred instanceof Evented_Class) {
-                        let val;
-                        let res = new Promise((resolve, reject) => {
-                            deferred.on('next', data => val = data);
-                            deferred.on('error', err => reject(err));
-                            deferred.on('complete', () => resolve(val));
-                        })
-                        return res;
-
-
-                    } else if (deferred instanceof Promise) {
-                        return deferred;
-                    } else {
-                        throw 'NYI';
-                    }
-                }
-
-                // obs to prom, obs_to_prom, to_prom, toPromise
-                let resolver = (deferred) => {
-                    if (deferred instanceof Evented_Class) {
-                        let res_all = [];
-                        let res = new Promise((resolve, reject) => {
-
-                            // But the data could be a page of data.
-
-                            deferred.on('next', data => {
-                                //console.log('data', data);
-                                res_all.push(data);
-
-                            });
-                            deferred.on('error', err => reject(err));
-                            deferred.on('complete', () => resolve(res_all));
-                        })
-                        return res;
-                    } else if (deferred instanceof Promise) {
-                        return deferred;
-                    } else {
-                        throw 'NYI';
-                    }
-                }
-
-                // Split them into model rows?
-                let page_splitter = (obs) => {
-                    let res = new Evented_Class();
-
-                    obs.on('next', data => {
-                        let rl = new Record_List(data);
-
-                        //console.log('rl.decoded', rl.decoded);
-
-                        // how about each
-                        //  for in would be cool, so an iterator would be best.
-
-                        // rl.keys
-
-                        for (let key of rl) {
-                            //console.log('key', key);
-                            //console.log('key.decoded', key.decoded);
-                            res.raise('next', key);
-                        }
-                    })
-                    obs.on('complete', () => res.raise('complete'));
-                    obs.on('error', err => res.raise('error', err));
-
-                    return res;
-                }
-
-                let decoder = obs => {
-                    let res = new Evented_Class();
-
-                    obs.on('next', record => {
-                        res.raise('next', record.decoded);
-                    })
-                    obs.on('complete', () => res.raise('complete'));
-                    obs.on('error', err => res.raise('error', err));
-
-                    return res;
-                }
-
-                // pages_to_records
-
+                //console.log('table_kv_field_names', table_kv_field_names);
                 let count_snapshot_records = await last(this.count_bittrex_market_snapshot_records(market_name));
-
-                console.log('count_snapshot_records', count_snapshot_records);
-
-                // can get the kv field names from the model.
-
+                //console.log('count_snapshot_records', count_snapshot_records);
                 let kv_field_names = this.model.get_table_kv_field_names('bittrex market summary snapshots');
-                console.log('kv_field_names', kv_field_names);
-
-
-                // 
-
-                // decoder too.
-
-
-
+                //console.log('kv_field_names', kv_field_names);
                 // Maybe this is less performant by a long way than the previous longer code.
                 let snapshot_records = await resolver(decoder(page_splitter(this.get_bittrex_market_snapshot_records(market_name))));
                 //console.log('snapshot_records', snapshot_records);
                 //console.log('snapshot_records.length', snapshot_records.length);
                 //var res = new Arr_KV_Table(kv_field_names, count_snapshot_records);
                 // then get the snapshot records
-
                 var res = new Arr_KV_Table(kv_field_names, snapshot_records);
-
                 resolve(res);
-
-
-
-
-
-
-
-                // then allocate the history object.
-
-                // Create a Typed_Array_Table
-
-                // 
-                //let snapshot_records = await this.get_bittrex_market_snapshot_records(market_name);
-
-
             })();
-
         })
-
-        return prom_opt_cb(res, callback);
-
-
-
-
-
-
-
-        /*
-        this.get_table_kv_field_names('bittrex market summary snapshots', (err, kv_field_names) => {
-            if (err) {
-                callback(err);
-            } else {
-                //console.trace();
-                //throw 'stop';
-
-
-                // Would definitely be nicer to have an observable go through the record set.
-                //  It's easier on the server if paging is used.
-
-                // Could add them to the table as they come in.
-                //  However, a count would be best to start with.
-
-                // 
-
-                // Could count the records, then use the observable get
-
-                that.get_bittrex_market_snapshot_records(market_name, (err, snapshot_records) => {
-                    if (err) {
-                        callback(err);
-                    } else {
-
-                        // 
-                        // The records have not been decoded.
-                        //  It makes sense to get the snapshot records in a paged way, or use an observable to get each record.
-
-                        // Could get the count first to allocate the data object.
-
-
-                        //console.log('kv_field_names', kv_field_names);
-
-
-
-
-                        //console.log('snapshot_records', snapshot_records);
-                        //console.log('snapshot_records.length', snapshot_records.length);
-
-
-                        //throw 'stop';
-
-                        var res = new Arr_KV_Table(kv_field_names, snapshot_records);
-                        callback(null, res);
-                    }
-                });
-            }
-        });
-        */
+        return prom_or_cb(res, callback);
     }
 
     get_bittrex_market_snapshots_time_range(arr_market_id, callback) {
@@ -1666,12 +1195,9 @@ class Assets_Client extends Client {
 
     get_buf_bittrex_market_snapshots_in_time_range(arr_market_id, arr_time_range, callback) {
         var kp = this.model.map_tables['bittrex market summary snapshots'].key_prefix;
-
         var l = Model.Database.encoding.encode_key(kp, [arr_market_id, arr_time_range[0]]);
         var u = Model.Database.encoding.encode_key(kp, [arr_market_id, arr_time_range[1]]);
-
-        this.ll_get_buf_records_in_range(l, u, callback);
-
+        return this.ll_get_buf_records_in_range(l, u, callback);
     }
 
     subscribe_bittrex_market_snapshots(market_name, cb_event) {
@@ -1954,13 +1480,8 @@ class Assets_Client extends Client {
 
     diagnose_bittrex_currency(currency_code) {
         // 
-
         // And this is a promise, not a normal observable.
-
-
-
         // would be worth scanning a table for anything matching this code.
-
         let pr_res = new Promise((resolve, reject) => {
             let pr_get = this.get_bittrex_currency_by_code(currency_code);
 
@@ -2102,22 +1623,10 @@ class Assets_Client extends Client {
                 // It does seem like keeping a CockroachDB going would make sense.
 
 
-
-
-
-
-
                 // if it's 0, then it's in Bitcoin's place.
 
                 //  we need to change it's ID to go to be a new incrementor record.
                 //   currency at position 0 would no longer exist.
-
-
-
-
-
-
-
 
             }, err => {
 
@@ -3389,22 +2898,6 @@ class Assets_Client extends Client {
     //  Should be done automatically when configured to do so.
 
     // Need to get the records to be local, and quickly / continually available.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 }
