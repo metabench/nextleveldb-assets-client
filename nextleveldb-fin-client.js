@@ -42,6 +42,8 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                 await this.ensure_tables(db_def);
                 console.log('post ensure tables');
 
+                //throw 'stop';
+
                 // Then functions to ensure various records.
                 //  Could keep track of the table data using Active_Table
 

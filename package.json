@@ -5,15 +5,16 @@
     "dependencies": {
         "arr-kv-table": "^0.0.1",
         "binary-encoding": "^0.0.55",
-        "bittrex-watcher": "^0.0.6",
+        "bittrex-watcher": "^0.0.7",
         "bluebird": "^3.5.1",
         "date-fns": "^1.29.0",
         "float64-kv-table": "^0.0.2",
         "fnl": "^0.0.1",
         "lang-mini": "^0.0.6",
         "my-config": "^2.0.0",
-        "nextleveldb-client": "^0.0.63",
+        "nextleveldb-client": "^0.0.64",
         "nextleveldb-model": "^0.0.59",
+        "fin-data": "^0.0.3",
         "xas2": "^0.0.17"
     },
     "engines": {
@@ -25,5 +26,5 @@
         "type": "git",
         "url": "https://github.com/metabench/nextleveldb-assets-client.git"
     },
-    "version": "0.0.39"
+    "version": "0.0.40"
 }
