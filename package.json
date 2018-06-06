@@ -8,7 +8,7 @@
         "bittrex-watcher": "^0.0.9",
         "bluebird": "^3.5.1",
         "date-fns": "^1.29.0",
-        "fin-data": "^0.0.4",
+        "fin-data": "^0.0.5",
         "float64-kv-table": "^0.0.2",
         "fnl": "^0.0.3",
         "lang-mini": "^0.0.6",
@@ -28,5 +28,5 @@
         "type": "git",
         "url": "https://github.com/metabench/nextleveldb-assets-client.git"
     },
-    "version": "0.0.42"
+    "version": "0.0.43"
 }
