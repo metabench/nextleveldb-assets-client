@@ -45,7 +45,6 @@ const tables = [
             ]
         ]
     ],
-
     [
         'bittrex currencies', [
             '+id',
