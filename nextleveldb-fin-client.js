@@ -91,17 +91,13 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
     // observable too
 
     collect_bittrex() {
-
         (async () => {
-
             let active = new Active_Database(this);
             let map_active_coins_by_code = {};
-
 
             // Wait until it is ready.
             //  Needs to load up its tables I think.
             //  Maybe something, not sure.
-
 
             console.log('!!active', !!active);
             console.log('Object.keys(active)', Object.keys(active));
@@ -110,36 +106,24 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
             let at_coins = active['coins'];
             console.log('!!at_coins', !!at_coins);
-
-
             console.log('Object.keys(at_coins)', Object.keys(at_coins));
-
             console.log('at_coins.model.name', at_coins.model.name);
             console.log('at_coins kv_fields', at_coins.kv_fields);
-
             //throw 'stop';
-
             // then use the active coins table to put records.
             //  how about active records with validation?
             //throw 'stop';
-
             let at_exchanges = active['exchanges'];
-
             // count the records in that table...
             //console.log()
             console.log('pre count exchanges');
             let count_exchanges = await at_exchanges.count();
             console.log('count_exchanges', count_exchanges);
-
             // 
-
             const bittrex = new Exchange({
                 name: 'Bittrex'
             });
-
             //at_exchanges.ensure({}'bittrex');
-
-
             /*
             // Could put this into fnl.
             let delay = async (ms) => {
@@ -148,29 +132,19 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         resolve();
                     }, ms)
                 });
-    
             }
             await delay(1000);
             */
-
             // get the bittrex active record.
-
             // just get the only property that is indexed.
-
             // seems like ensure_record is not returning the data properly.
             let ar_bittrrex_exchange = await at_exchanges.ensure(bittrex);
-
-
-
             console.log('!!ar_bittrrex_exchange', !!ar_bittrrex_exchange);
-
             // then the ar could have a key
             console.log('ar_bittrrex_exchange.key', ar_bittrrex_exchange.key);
             console.log('ar_bittrrex_exchange.key.decoded', ar_bittrrex_exchange.key.decoded);
             console.log('ar_bittrrex_exchange.decoded', ar_bittrrex_exchange.decoded);
-
             //throw 'stop';
-
             // then with the coins on exchange
             //  
 
@@ -179,7 +153,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
             //throw 'stop';
 
-
             let at_exchange_coins = active['exchange coins'];
             let at_exchange_markets = active['exchange markets'];
 
@@ -187,7 +160,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
             //let at_market_snapshots = active['market snapshots'];
             let at_market_snapshots = active['exchange market summary snapshots'];
             //console.log('!!at_exchange_coins', !!at_exchange_coins);
-
             //throw 'stop';
 
             let obs_snapshots = Bittrex_Watcher.watch_bittrex_snaphots(1000);
@@ -196,8 +168,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
             // Ideally want to get the initial snapshotts, save them, and then proceed with the interval.
             //  Also, batching of records to put could help.
 
-
-
             // Need to see if we have got these necessary data objects.
             //  Would be useful to have arrays of the oo objects with the market snapshots.
             //   But likely we would need to get them elsewhere.
@@ -205,8 +175,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
             // data.market_snapshots
             // data.data
             // data.basis
-
-
 
             // map of exchange coins by market name...
 
@@ -219,10 +187,10 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                     let coin_code = item[0];
                     if (!map_bittrex_exchange_coins_by_code[coin_code]) {
                         let exchange_coin = item[1];
-                        let coin = exchange_coin.coin;
+                        //let coin = exchange_coin.coin;
                         //console.log('pre ensure item');
                         // Not working quite right.
-                        let active_coin_record = await at_coins.ensure(coin);
+                        let active_coin_record = await at_coins.ensure(exchange_coin.coin);
                         // No, it should have the key in the returned record.
                         map_active_coins_by_code[coin_code] = active_coin_record;
                         exchange_coin.coin_id = active_coin_record.key.decoded[1];
@@ -230,22 +198,25 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         //console.log
                         //console.log('item', item);
                         // copy the exchange coin properties over?
-                        let ar_exchange_coin = await at_exchange_coins.ensure(exchange_coin);
+
+
+
+                        //let ar_exchange_coin = await at_exchange_coins.ensure(exchange_coin);
                         //console.log('ar_exchange_coin.decoded', ar_exchange_coin.decoded);
-                        map_bittrex_exchange_coins_by_code[exchange_coin.coin.code] = ar_exchange_coin;
+                        //map_bittrex_exchange_coins_by_code[exchange_coin.coin.code] = ar_exchange_coin;
+
+                        map_bittrex_exchange_coins_by_code[exchange_coin.coin.code] = await at_exchange_coins.ensure(exchange_coin);
+
                     }
                 }
                 console.log('coins have been ensured');
                 return true;
             }
-
             // Won't need to create new ARs if we keep them cached.
-
             let ensure_markets = async (map_exchange_markets) => {
                 for (let market of Object.entries(map_exchange_markets)) {
                     //console.log('market', market);
                     let [code, exchange_market] = market;
-
                     //console.log('exchange_market', exchange_market);
                     //console.log('code', code);
                     //console.log('map_bittrex_markets_by_name', map_bittrex_markets_by_name);
@@ -254,8 +225,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         //console.log('found');
                     } else {
                         //console.log('not found');
-
-
                         exchange_market.exchange_id = ar_bittrrex_exchange.key.decoded[1];
 
                         // So far this just refers to the coin.
@@ -272,14 +241,11 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         //  Get denormalised data.
                         //   Auto joins would be cool.
                         //    Could make some very long keys though.
-
-
                         // hacked this part together :(
                         //  need to fix it.
 
                         // exchange market .market_exchange_coin_key
                         //                 .base_exchange_coin_key
-
                         // .key.
 
                         //exchange_market.market_exchange_coin_id = map_bittrex_exchange_coins_by_code[exchange_market.market_exchange_coin.coin.code].key.decoded[2];
@@ -291,9 +257,7 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         //console.log('exchange_market.market_exchange_coin_key', exchange_market.market_exchange_coin_key);
                         //console.log('exchange_market.base_exchange_coin_key', exchange_market.base_exchange_coin_key);
 
-
                         //throw 'stop';
-
 
                         //console.log('exchange_market', exchange_market);
                         //console.log('     -----     ');
@@ -302,13 +266,11 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         //  Exchange coin key rather than exchange coin id.
                         //  Exchange coins don't have id themselves, they have keys composed out of the exchange id and the coin id
 
-
                         let ar_exchange_market = await at_exchange_markets.ensure(exchange_market);
                         //console.log('ar_exchange_market', ar_exchange_market);
                         //console.log('ar_exchange_market.decoded', ar_exchange_market.decoded);
                         map_bittrex_markets_by_name[exchange_market.name] = ar_exchange_market;
                     }
-
                 }
                 console.log('markets have been ensured');
                 return true;
@@ -335,22 +297,18 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                 // Ensure exchange coins
                 // Ensure exchange markets
                 // Put market snapshot records
-
                 // Want the core operations to be done in a very small amount of code on this level.
 
                 //console.log('Object.keys(map_exchange_coins).length', Object.keys(map_exchange_coins).length);
                 //console.log('Object.keys(map_exchange_markets).length', Object.keys(map_exchange_markets).length);
-
                 // Then, looks like we need an Active_Record for each of them.
 
                 // Active_Record will get the record id if it already exists
                 //  If it does not exist, it will create the record.
-
                 // Would need to query an Active_Table to see if the record exists.
                 //  Maybe do some more advances with active-record / nextleveldb and bringing it to the client.
 
                 // Really want a simple procedure in the fin client or collector to get and ensure active records for all of these.
-
                 // ensure all of these...
 
                 // Want to be able to check for a wide variety of indexes / keys at once.
@@ -360,25 +318,21 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
                 // an async each?
                 //  Will want to ensure all of these at once.
-
                 // async iterator of object?
-
-                // The put loop is quite quicj anyway/
+                // The put loop is quite quick anyway/
 
                 let ensure_market_snapshots = async () => {
-
-
+                    console.log('ensure_market_snapshots');
                     //map_bittrex_exchanges_by_name
-
                     // 
                     //console.log('at_exchange_markets.id', at_exchange_markets.id);
 
                     for (let market_snapshot of market_snapshots) {
                         // access the active exchange market
-                        let ar_em = map_bittrex_markets_by_name[market_snapshot.exchange_market.name];
+                        //let ar_em = ;
                         //console.log('ar_em', ar_em);
                         //console.log('ar_em.decoded', ar_em.decoded);
-                        let decoded = ar_em.decoded;
+                        //let decoded = ar_em.decoded;
                         // then the id from that.
                         //console.log('market_snapshot', market_snapshot);
                         // But the markets don't themselves have IDs.
@@ -387,7 +341,7 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         //  but not the whole key, not the kp
                         // decoded_key_no_kp
                         // decoded_no_kp
-                        market_snapshot.exchange_market_key = ar_em.decoded_key_no_kp;
+                        market_snapshot.exchange_market_key = map_bittrex_markets_by_name[market_snapshot.exchange_market.name].decoded_key_no_kp;
                         //console.log('!!at_market_snapshots.put', !!at_market_snapshots.put);
 
                         // Batch create active records?
@@ -406,7 +360,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         //  queue_put(record)
                         //  await queue();
 
-
                         // Batches of normal operations will be useful.
                         //  These are no a standard batch_put operation.
 
@@ -416,9 +369,15 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                         // It's at the stage now where it can run on a machine.
                         //  Batching of the put operations would definitely save on resources.
                         //   
+                        //console.log('pre put');
+                        //console.log('market_snapshot', market_snapshot);
 
-                        let ar_snapshot = await at_market_snapshots.put(market_snapshot);
-                        //console.log('ar_snapshot.decoded', ar_snapshot.decoded);
+                        //let ar_snapshot = await at_market_snapshots.put(market_snapshot);
+
+                        await at_market_snapshots.put(market_snapshot);
+
+                        console.log('ar_snapshot.key.buffer', ar_snapshot.key.buffer);
+                        console.log('ar_snapshot.decoded', ar_snapshot.decoded);
                         // Seems to actually put the data now.
                         //  Primary keys with multiple fields can be put in an array so they count as a single field.
                         //throw 'stop';
@@ -453,13 +412,15 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
     }
 
 
-    get_bittrex_market_snapshots(market) {
+    get_market_snapshots(market) {
         // not so sure about getting these as the oo snapshots.
-
         // just get the records.
+        console.log('get_market_snapshots market', market);
+        // market snapshots get by key beginning.
 
-        console.log('market', market);
 
+
+        return this.get_table_records_by_key('exchange market summary snapshots', [market.key]);
     }
 
     get_bittrex_markets(callback) {
@@ -471,19 +432,11 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
         //  obs_map could be useful, or use mapping in the observable itself.
 
         // Maybe this should get the records...
-
         let bittrex_exchange_id = 0;
-
-
         return prom_or_cb(async (resolve, reject) => {
-
-
             // Lookup bittrex exchange record by key.
-
-
             // Worth loading all exchanges too?
             //  
-
             // table_record_index_lookup
 
             let br_bittrex = await this.table_record_lookup('exchanges', 0, 'Bittrex');
@@ -492,10 +445,7 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
             let model_table_exchanges = this.model.map_tables['exchanges'];
             let model_table_markets = this.model.map_tables['exchange markets'];
 
-
-
             console.log("model_table_exchanges.field_names", model_table_exchanges.field_names);
-
 
             let obj_bittrex = br_bittrex.to_obj(model_table_exchanges);
             console.log('obj_bittrex', obj_bittrex);
@@ -505,13 +455,8 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
             //throw 'stop';
             // select markets by id part
-            // 
             console.log('pre get_table_selection_records');
             let br_markets = await this.get_table_selection_records('exchange markets', [0]);
-
-            // then 
-
-
             // Get table selection fields / field values?
             //  get_table_selection_fields [3]
 
@@ -520,7 +465,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
             // Being able to do server-side joins would definitely be useful.
             //  Here can find out which coins to get.
-
             // ids of coins to get
 
             //  meaning we call on the server to get the records within a table by ids
@@ -533,18 +477,15 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
             //   and these keys may not have the key prefix already?
             //   key in this domain excludes the key prefix?
 
-
-
-
             //  get_table_records_by_keys
 
             let coin_keys = [];
 
             each(br_exchange_coins, brec => {
-                console.log('brec.decoded', brec.decoded);
+                //console.log('brec.decoded', brec.decoded);
                 // coin_id = decoded 0,2.
                 let coin_id = brec.decoded[0][2];
-                console.log('coin_id', coin_id);
+                //console.log('coin_id', coin_id);
 
                 //let ec = new Exchange_Coin()
 
@@ -556,8 +497,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
             // then retrieve multiple coins by that ID.
             //  DB joins would definitely be useful at this level.
-
-
 
             // then get bittrex coins
             // 
@@ -578,21 +517,16 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
             // Worth returning a map?
 
-
-
             each(arr_br_coins_used, coin_used => {
 
                 //console.log('coin_used.decoded_no_kp', coin_used.decoded_no_kp);
                 // decoded_no_kp
 
                 let coin = new Coin(coin_used.decoded_no_kp);
-                console.log('coin', coin);
+                //console.log('coin', coin);
 
                 map_coins[coin.id] = coin;
                 coins.push(coins);
-
-
-
 
             });
 
@@ -614,12 +548,11 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                     'coin': coin
                 });
                 exchange_coins.push(ec);
+                console.log('ec', ec);
                 //coin_keys.push(coin_id);
-                console.log('ec.key', ec.key);
+                //console.log('ec.key', ec.key);
                 //throw 'stop';
-
-                map_exchange_coins[ec.id] = ec;
-
+                map_exchange_coins[[ec.exchange.id, ec.coin.id]] = ec;
             });
 
             each(br_markets, br_market => {
@@ -627,65 +560,45 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                 //let dnkp = br_market.decoded_no_kp;
                 //console.log('dnkp', dnkp);
                 //console.log('hi');
-
                 //console.log('model_table_markets', model_table_markets);
                 //console.log('br_market.to_obj', br_market.to_obj);
 
                 let obj_market = br_market.to_obj(model_table_markets);
-                console.log('obj_market', obj_market);
+                //console.log('obj_market', obj_market);
                 console.log('br_market.decoded', br_market.decoded);
 
-
                 obj_market.exchange = exchange_bittrex;
-                obj_market.market_exchange_coin = map_exchange_coins[obj_market.market_exchange_coin_id];
-                obj_market.base_exchange_coin = map_exchange_coins[obj_market.base_exchange_coin_id];
+                obj_market.market_exchange_coin = map_exchange_coins[obj_market.market_exchange_coin_key];
+                obj_market.base_exchange_coin = map_exchange_coins[obj_market.base_exchange_coin_key];
 
-                console.log('obj_market', obj_market);
+                //console.log('obj_market', obj_market);
 
                 let em = new Exchange_Market(obj_market);
-                console.log('em', em);
+                //console.log('em', em);
 
                 exchange_markets.push(em);
 
-                console.log('map_exchange_coins', map_exchange_coins);
-                throw 'stop';
+                //console.log('map_exchange_coins', map_exchange_coins);
+                //throw 'stop';
 
                 //obj_market.
-            })
-
+            });
             console.log('exchange_markets', exchange_markets);
-
+            // The map of exchange markets by name seems most important.
+            // define a get map property...?
             resolve(exchange_markets);
-
-
-
             // ikey
             //  identifying key, not including key prefix
             //  key_wp
-
             //get_table_selection_records
-
-
         }, callback);
-
-
-
-
     }
 
-
     // Live data would definitely be useful.
-
     // for the moment, want to do it with a single value series.
-
-
-
-
-
 
     // Basically want to add table records in a simple way.
     //  Maybe references to the table would help.
-
 
     // May go more of an active table / active record route to putting the data into place.
     //  Now seems like outputting a standard row format will be easy enough...
@@ -693,7 +606,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
     // ensure_snapshots({
     //   ensure_table_records('snapshots', snapshots.to_records())
     //})
-
 }
 
 
@@ -711,6 +623,7 @@ if (require.main === module) {
             //env : process.env['NODE_ENV']
             //env : process.env
         });
+
         let access_token = config.nextleveldb_access.root[0];
         var server_data2 = config.nextleveldb_connections.data2;
         server_data2.access_token = access_token;
@@ -735,6 +648,8 @@ if (require.main === module) {
         server_data11.access_token = access_token;
         var server_data12 = config.nextleveldb_connections.data12;
         server_data12.access_token = access_token;
+        var server_data13 = config.nextleveldb_connections.data13;
+        server_data13.access_token = access_token;
 
         local_info.access_token = access_token;
         //var server_data1 = config.nextleveldb_connections.localhost;
@@ -750,22 +665,94 @@ if (require.main === module) {
 
         // have client reload the model?
         // Should have ensured the db structure.
-
         // ensure the right table structure at one time?
         console.log('client started');
-        //client.collect_bittrex();
 
+        //client.collect_bittrex();
         //console.log('pre get_bittrex_markets');
 
-        client.collect_bittrex();
+        //client.collect_bittrex();
         // Needs to load the bittrex exchanges etc
         //  Load the B_Records / Records
         //  Load the OO class instances. Markets need to refer to other data.
         //   Need to load those other pieces of data at the same time.
 
+        // There could be a problem with it putting the key into the db completely enclosed by an array
+        //  Not sure... seems OK actually because it encloses one item.
 
-        //let markets = await client.get_bittrex_markets();
-        //console.log('markets', markets);
+        let retrieve = async () => {
+            let arr_map = (arr, property_name) => {
+                let res = {};
+                //console.log('property_name', property_name);
+                for (let c = 0, l = arr.length; c < l; c++) {
+                    //console.log('arr[c]', arr[c]);
+                    res[arr[c][property_name]] = arr[c];
+                }
+                return res;
+            }
+            let markets = await client.get_bittrex_markets();
+            console.log('markets', markets);
+
+            let map_markets = arr_map(markets, 'name');
+            console.log('map_markets', map_markets);
+
+            // then get the b_record from that market. ???
+            //  Getting the key is important because the key will be used in the snapshot records.
+            each(markets, market => {
+                // // The keys within keys are encoded as arrays.
+                console.log('market.key', market.key);
+            });
+            console.log('Object.keys(map_markets)', Object.keys(map_markets));
+
+            // then get the btc-eth trading history
+            // want it in a way that refers to the objects?
+
+            let market_btc_eth = map_markets['BTC-ETH'];
+            console.log('market_btc_eth', market_btc_eth);
+
+            let obs_market_snapshots_btc_eth = client.get_market_snapshots(market_btc_eth);
+            let c = 0;
+
+            // Got strange ordering with concerning the length of the timestamp values.
+            //  The way the times are added are not sortable when they have different amount of time digits.
+            //  Number of milliseconds since...
+
+            obs_market_snapshots_btc_eth.on('next', data => {
+                //console.log('data', data);
+                //console.log('data.decoded', data.decoded[0], data.decoded[1]);
+                //console.log('data.decoded[0][2]', data.decoded[0][2]);
+                //console.log('data.decoded[0]', data.decoded[0]);
+                //console.log('data.decoded[0][0]', data.decoded[0][0]);
+
+                if (true || c % 100 === 0) {
+                    //console.log('data', data);
+                    //console.log('data.key.buffer', data.key.buffer);
+                    // the key...
+                    // yes, got to do with the key length.
+                    // need to add more 0 digits to the timestamp.
+                    //  is the timestamp an XAS2?
+                    // Better encoding of timestamps seems necessary now.
+                    //  All times will need to be encoded to the same length...?
+                    // Maybe problem is using XAS2 or similar for encoding, shaving size of storage down, but messing up comparison order.
+                    // extracting data from the 
+                    console.log('data.key.buffer.length', data.key.buffer.length);
+                    console.log('data.key.buffer', data.key.buffer);
+                    console.log('data.decoded[0][2]', data.decoded[0][2]);
+                    //console.log('data.decoded[0]', data.decoded[0]);
+                }
+                c++;
+            });
+            obs_market_snapshots_btc_eth.on('complete', () => {
+                console.log('record count: ', c);
+            })
+        }
+        retrieve();
+        // Seems like getting data for analysis is now possible.
+        //  Load the relevant data (timestamp, )
+
+        // Showing it in a graph would definitely be cool.
+
+        // lookup 
 
         //let tbl_coins = client.model
         // Model tables, and active tables.
@@ -773,6 +760,4 @@ if (require.main === module) {
         // Ensuring the bittrex / fin structure? Fin client will do that automatically.
         //let client = new NextLevelDB_Fin_Client()
     })();
-
-
 }
