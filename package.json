@@ -10,12 +10,12 @@
         "date-fns": "^1.29.0",
         "fin-data": "^0.0.7",
         "float64-kv-table": "^0.0.2",
-        "fnl": "^0.0.3",
-        "lang-mini": "^0.0.6",
+        "fnl": "^0.0.5",
+        "lang-mini": "^0.0.8",
         "my-config": "^2.0.0",
-        "nextleveldb-client": "^0.0.72",
-        "nextleveldb-model": "^0.0.68",
-        "nextleveldb-active": "^0.0.3",
+        "nextleveldb-client": "^0.0.75",
+        "nextleveldb-model": "^0.0.71",
+        "nextleveldb-active": "^0.0.4",
         "request": "^2.87.0",
         "xas2": "^0.0.17"
     },
@@ -28,5 +28,5 @@
         "type": "git",
         "url": "https://github.com/metabench/nextleveldb-assets-client.git"
     },
-    "version": "0.0.44"
+    "version": "0.0.45"
 }

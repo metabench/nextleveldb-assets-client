@@ -68,8 +68,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
                 // Ensure structure from oo snapshots.
 
-
-
                 /*
 
                 let obs_bittrex_snapshots = Bittrex_Watcher.watch_bittrex_snaphots(10000);
@@ -79,9 +77,7 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
                     console.log('data.length', data.length);
                 });
                 */
-
                 resolve();
-
             })();
         }, callback);
     }
@@ -150,7 +146,6 @@ class NextLevelDB_Fin_Client extends NextLevelDB_Client {
 
             // .id
             //  that is a property lookup on the Active_Record.
-
             //throw 'stop';
 
             let at_exchange_coins = active['exchange coins'];
@@ -614,8 +609,6 @@ if (require.main === module) {
     (async () => {
         var local_info = {
             'server_address': 'localhost',
-            //'server_address': 'localhost',
-            //'db_path': 'localhost',
             'server_port': 420
         }
         var config = require('my-config').init({
@@ -625,6 +618,8 @@ if (require.main === module) {
         });
 
         let access_token = config.nextleveldb_access.root[0];
+
+        /*
         var server_data2 = config.nextleveldb_connections.data2;
         server_data2.access_token = access_token;
         var server_data3 = config.nextleveldb_connections.data3;
@@ -650,6 +645,7 @@ if (require.main === module) {
         server_data12.access_token = access_token;
         var server_data13 = config.nextleveldb_connections.data13;
         server_data13.access_token = access_token;
+        */
 
         local_info.access_token = access_token;
         //var server_data1 = config.nextleveldb_connections.localhost;
